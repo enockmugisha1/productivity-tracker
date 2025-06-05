@@ -5,9 +5,21 @@ const auth = require('../middleware/auth');
 
 // ✅ Create Note
 router.post('/', auth, async (req, res) => {
-  const { content, goal, habit } = req.body;
-  const note = await Note.create({ user: req.user, content, goal, habit });
-  res.status(201).json(note);
+  const { title, content, category, goal, habit } = req.body;
+  try {
+    const note = await Note.create({
+      user: req.user._id,
+      title,
+      content,
+      category,
+      goal,
+      habit
+    });
+    res.status(201).json(note);
+  } catch (error) {
+    console.error("Error creating note:", error);
+    res.status(500).json({ message: "Failed to create note", error: error.message });
+  }
 });
 
 // ✅ Get All Notes
