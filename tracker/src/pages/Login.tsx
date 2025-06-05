@@ -13,13 +13,12 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = (location.state as any)?.from?.pathname || '/dashboard';
-
   useEffect(() => {
-    if (user) {
-      navigate(from, { replace: true });
+    if (user && location.pathname === '/login') {
+      const targetPath = location.state?.from?.pathname || '/dashboard';
+      navigate(targetPath, { replace: true });
     }
-  }, [user, navigate, from]);
+  }, [user, location.pathname, location.state?.from?.pathname, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +26,8 @@ const Login: React.FC = () => {
     setIsLoading(true);
     try {
       await login(email, password);
-      navigate(from, { replace: true });
+      const fromPath = location.state?.from?.pathname || '/dashboard';
+      navigate(fromPath, { replace: true });
     } catch (err: any) {
       setLocalError(err.message || 'Failed to login. Please check your credentials.');
     } finally {

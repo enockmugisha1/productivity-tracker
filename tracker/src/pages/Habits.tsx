@@ -19,31 +19,42 @@ export default function Habits() {
     description: '',
     frequency: 'daily' as 'daily' | 'weekly',
   });
-  const token = useAuthStore((state) => state.token);
+  const user = useAuthStore((state) => state.user);
 
   const fetchHabits = async () => {
+    if (!user) {
+      setHabits([]);
+      return;
+    }
     try {
-      const response = await axios.get('/habits', {
-        headers: { Authorization: `Bearer ${token}` },
+      const idToken = await user.getIdToken();
+      const response = await axios.get('/api/habits', {
+        headers: { Authorization: `Bearer ${idToken}` },
       });
       setHabits(response.data);
     } catch (error) {
       toast.error('Failed to fetch habits');
+      setHabits([]);
     }
   };
 
   useEffect(() => {
     fetchHabits();
-  }, [token]);
+  }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      toast.error('You must be logged in to create a habit.');
+      return;
+    }
     try {
+      const idToken = await user.getIdToken();
       await axios.post(
-        '/habits',
+        '/api/habits',
         { ...newHabit, streak: 0 },
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${idToken}` },
         }
       );
       setNewHabit({ title: '', description: '', frequency: 'daily' });
@@ -55,12 +66,17 @@ export default function Habits() {
   };
 
   const markHabitComplete = async (habitId: string) => {
+    if (!user) {
+      toast.error('You must be logged in to complete a habit.');
+      return;
+    }
     try {
+      const idToken = await user.getIdToken();
       await axios.post(
-        `/habits/${habitId}/complete`,
+        `/api/habits/${habitId}/complete`,
         {},
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${idToken}` },
         }
       );
       fetchHabits();
@@ -124,7 +140,7 @@ export default function Habits() {
 
       {/* Habits List */}
       <div className="space-y-4">
-        {habits.map((habit) => (
+        {Array.isArray(habits) && habits.map((habit) => (
           <div key={habit._id} className="bg-white shadow rounded-lg p-6">
             <div className="flex justify-between items-start">
               <div>

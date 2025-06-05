@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { FiPlus, FiTrash2, FiEdit2 } from 'react-icons/fi';
+import { useAuthStore } from '../store/authStore';
 
 interface Note {
   _id: string;
@@ -18,15 +19,25 @@ export default function Notes() {
   const [isLoading, setIsLoading] = useState(false);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const user = useAuthStore((state) => state.user);
 
   const fetchNotes = async () => {
     setIsLoading(true);
+    if (!user) {
+      setNotes([]);
+      setIsLoading(false);
+      return;
+    }
     try {
-      const response = await axios.get('/api/notes');
+      const idToken = await user.getIdToken();
+      const response = await axios.get('/api/notes', {
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
       setNotes(response.data);
     } catch (error) {
       toast.error('Failed to fetch notes');
       console.error("Fetch notes error:", error);
+      setNotes([]);
     } finally {
       setIsLoading(false);
     }
@@ -34,7 +45,7 @@ export default function Notes() {
 
   useEffect(() => {
     fetchNotes();
-  }, []);
+  }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -47,13 +58,20 @@ export default function Notes() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      toast.error('You must be logged in to submit a note.');
+      return;
+    }
     setIsLoading(true);
     const noteData = editingNote || newNote;
     const url = editingNote ? `/api/notes/${editingNote._id}` : '/api/notes';
     const method = editingNote ? 'put' : 'post';
 
     try {
-      await axios[method](url, noteData);
+      const idToken = await user.getIdToken();
+      await axios[method](url, noteData, {
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
       toast.success(editingNote ? 'Note updated successfully' : 'Note created successfully');
       setNewNote({ title: '', content: '', category: '' });
       setEditingNote(null);
@@ -68,10 +86,17 @@ export default function Notes() {
   };
 
   const handleDelete = async (noteId: string) => {
+    if (!user) {
+      toast.error('You must be logged in to delete a note.');
+      return;
+    }
     if (window.confirm('Are you sure you want to delete this note?')) {
       setIsLoading(true);
       try {
-        await axios.delete(`/api/notes/${noteId}`);
+        const idToken = await user.getIdToken();
+        await axios.delete(`/api/notes/${noteId}`, {
+          headers: { Authorization: `Bearer ${idToken}` },
+        });
         toast.success('Note deleted successfully');
         fetchNotes();
       } catch (error) {
@@ -206,8 +231,8 @@ export default function Notes() {
       )}
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {notes.map((note) => (
-          <div key={note._id} className="bg-white shadow-lg rounded-xl p-6 flex flex-col justify-between hover:shadow-xl transition-shadow duration-300">
+        {Array.isArray(notes) && notes.map((note) => (
+          <div key={note._id} className="bg-white shadow-lg rounded-xl p-6 flex flex-col justify-between hover:shadow-xl hover:bg-indigo-50 transition-all duration-300">
             <div>
               <div className="flex justify-between items-start mb-2">
                 <h3 className="text-xl font-semibold text-gray-800 break-all">{note.title}</h3>

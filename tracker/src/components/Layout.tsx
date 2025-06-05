@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
-  FiHome, FiCheckSquare, FiTarget, FiEdit3, FiUser, FiSettings, FiLogOut, FiMenu, FiX 
+  FiHome, FiCheckSquare, FiTarget, FiEdit3, FiUser, FiSettings, FiLogOut, FiMenu, FiX, FiMessageSquare 
 } from 'react-icons/fi'; // Feather icons
 
 interface LayoutProps {
-  children: React.ReactNode;
+  // children: React.ReactNode; // Removed children
 }
 
 const navItems = [
@@ -15,9 +15,10 @@ const navItems = [
   { name: 'Habits', path: '/habits', icon: <FiCheckSquare /> }, // Placeholder, choose better icon if available
   { name: 'Tasks', path: '/tasks', icon: <FiCheckSquare /> },
   { name: 'Notes', path: '/notes', icon: <FiEdit3 /> },
+  { name: 'AI Assistant', path: '/ai-assistant', icon: <FiMessageSquare /> }, // New AI Assistant nav item
 ];
 
-const Layout: React.FC<LayoutProps> = ({ children }) => {
+const Layout: React.FC<LayoutProps> = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -157,7 +158,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
           {/* Page title could go here or be set by each page component */}
           {/* <h1 className="text-2xl font-semibold text-gray-900 mb-6">Page Title</h1> */}
-          {children}
+          <Outlet />
         </main>
 
         <footer className="bg-white border-t border-gray-200 px-4 sm:px-6 lg:px-8 py-4">

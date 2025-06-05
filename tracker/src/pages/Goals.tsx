@@ -19,31 +19,42 @@ export default function Goals() {
     description: '',
     targetDate: '',
   });
-  const token = useAuthStore((state) => state.token);
+  const user = useAuthStore((state) => state.user);
 
   const fetchGoals = async () => {
+    if (!user) {
+      setGoals([]);
+      return;
+    }
     try {
-      const response = await axios.get('/goals', {
-        headers: { Authorization: `Bearer ${token}` },
+      const idToken = await user.getIdToken();
+      const response = await axios.get('/api/goals', {
+        headers: { Authorization: `Bearer ${idToken}` },
       });
       setGoals(response.data);
     } catch (error) {
       toast.error('Failed to fetch goals');
+      setGoals([]);
     }
   };
 
   useEffect(() => {
     fetchGoals();
-  }, [token]);
+  }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      toast.error('You must be logged in to create a goal.');
+      return;
+    }
     try {
+      const idToken = await user.getIdToken();
       await axios.post(
-        '/goals',
+        '/api/goals',
         { ...newGoal, progress: 0, status: 'active' },
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${idToken}` },
         }
       );
       setNewGoal({ title: '', description: '', targetDate: '' });
@@ -55,12 +66,17 @@ export default function Goals() {
   };
 
   const updateProgress = async (goalId: string, progress: number) => {
+    if (!user) {
+      toast.error('You must be logged in to update progress.');
+      return;
+    }
     try {
+      const idToken = await user.getIdToken();
       await axios.patch(
-        `/goals/${goalId}`,
+        `/api/goals/${goalId}`,
         { progress },
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${idToken}` },
         }
       );
       fetchGoals();
@@ -71,12 +87,17 @@ export default function Goals() {
   };
 
   const updateStatus = async (goalId: string, status: Goal['status']) => {
+    if (!user) {
+      toast.error('You must be logged in to update status.');
+      return;
+    }
     try {
+      const idToken = await user.getIdToken();
       await axios.patch(
-        `/goals/${goalId}`,
+        `/api/goals/${goalId}`,
         { status },
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${idToken}` },
         }
       );
       fetchGoals();
@@ -139,7 +160,7 @@ export default function Goals() {
 
       {/* Goals List */}
       <div className="space-y-4">
-        {goals.map((goal) => (
+        {Array.isArray(goals) && goals.map((goal) => (
           <div key={goal._id} className="bg-white shadow rounded-lg p-6">
             <div className="flex justify-between items-start">
               <div>

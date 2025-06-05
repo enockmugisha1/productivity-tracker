@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FcGoogle } from 'react-icons/fc';
 
@@ -14,12 +14,13 @@ const Register: React.FC = () => {
   const { register, googleLogin, error: authError, user } = useAuth();
   const [localError, setLocalError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
-    if (user) {
+    if (user && location.pathname === '/register') {
       navigate('/dashboard', { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, location.pathname]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLocalError(null);

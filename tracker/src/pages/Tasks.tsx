@@ -18,31 +18,42 @@ export default function Tasks() {
     description: '',
     dueDate: '',
   });
-  const token = useAuthStore((state) => state.token);
+  const user = useAuthStore((state) => state.user);
 
   const fetchTasks = async () => {
+    if (!user) {
+      setTasks([]);
+      return;
+    }
     try {
-      const response = await axios.get('http://localhost:5000/api/tasks', {
-        headers: { Authorization: `Bearer ${token}` },
+      const idToken = await user.getIdToken();
+      const response = await axios.get('/api/tasks', {
+        headers: { Authorization: `Bearer ${idToken}` },
       });
       setTasks(response.data);
     } catch (error) {
       toast.error('Failed to fetch tasks');
+      setTasks([]);
     }
   };
 
   useEffect(() => {
     fetchTasks();
-  }, [token]);
+  }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      toast.error('You must be logged in to create a task.');
+      return;
+    }
     try {
+      const idToken = await user.getIdToken();
       await axios.post(
-        'http://localhost:5000/api/tasks',
+        '/api/tasks',
         newTask,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${idToken}` },
         }
       );
       setNewTask({ title: '', description: '', dueDate: '' });
@@ -54,14 +65,19 @@ export default function Tasks() {
   };
 
   const toggleTaskStatus = async (taskId: string, currentStatus: string) => {
+    if (!user) {
+      toast.error('You must be logged in to update a task.');
+      return;
+    }
     try {
+      const idToken = await user.getIdToken();
       await axios.patch(
-        `http://localhost:5000/api/tasks/${taskId}`,
+        `/api/tasks/${taskId}`,
         {
           status: currentStatus === 'pending' ? 'completed' : 'pending',
         },
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${idToken}` },
         }
       );
       fetchTasks();
@@ -72,9 +88,14 @@ export default function Tasks() {
   };
 
   const deleteTask = async (taskId: string) => {
+    if (!user) {
+      toast.error('You must be logged in to delete a task.');
+      return;
+    }
     try {
-      await axios.delete(`http://localhost:5000/api/tasks/${taskId}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const idToken = await user.getIdToken();
+      await axios.delete(`/api/tasks/${taskId}`, {
+        headers: { Authorization: `Bearer ${idToken}` },
       });
       fetchTasks();
       toast.success('Task deleted');
@@ -136,8 +157,8 @@ export default function Tasks() {
       {/* Tasks List */}
       <div className="bg-white shadow overflow-hidden sm:rounded-md">
         <ul className="divide-y divide-gray-200">
-          {tasks.map((task) => (
-            <li key={task._id} className="px-6 py-4">
+          {Array.isArray(tasks) && tasks.map((task) => (
+            <li key={task._id} className="px-6 py-4 hover:bg-gray-50 transition-colors duration-150">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <input
@@ -153,14 +174,16 @@ export default function Tasks() {
                       {task.title}
                     </p>
                     <p className="text-sm text-gray-500">{task.description}</p>
-                    <p className="text-xs text-gray-400">
-                      Due: {new Date(task.dueDate).toLocaleDateString()}
-                    </p>
+                    {task.dueDate && (
+                      <p className="text-xs text-gray-400">
+                        Due: {new Date(task.dueDate).toLocaleDateString()}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <button
                   onClick={() => deleteTask(task._id)}
-                  className="text-red-600 hover:text-red-900"
+                  className="text-red-600 hover:text-red-900 ml-4"
                 >
                   Delete
                 </button>
@@ -171,4 +194,4 @@ export default function Tasks() {
       </div>
     </div>
   );
-} 
+}

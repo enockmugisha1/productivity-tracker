@@ -26,23 +26,23 @@ export default function Dashboard() {
     activeHabits: 0,
     totalNotes: 0,
   });
-  const token = useAuthStore((state) => state.token);
+  const token = useAuthStore((state) => state.user?.getIdToken());
   const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/stats', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await axios.get('/api/stats');
         setStats(response.data);
       } catch (error) {
-        console.error('Failed to fetch stats');
+        console.error('Failed to fetch stats', error);
       }
     };
 
-    fetchStats();
-  }, [token]);
+    if (user) {
+      fetchStats();
+    }
+  }, [user]);
 
   const stats_cards = [
     {
@@ -83,7 +83,7 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">
-          Welcome back, {user?.name}!
+          Welcome back, {user?.displayName}!
         </h1>
         <p className="mt-1 text-sm text-gray-500">
           Here's an overview of your productivity
