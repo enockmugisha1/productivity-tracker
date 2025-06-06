@@ -24,7 +24,7 @@ router.patch('/:id/complete', auth, async (req, res) => {
 });
 
 // ✅ Update Task
-router.put('/:id', auth, async (req, res) => {
+router.patch('/:id', auth, async (req, res) => {
   const task = await Task.findOneAndUpdate({ _id: req.params.id, user: req.user }, req.body, { new: true });
   if (!task) return res.status(404).json({ message: 'Task not found' });
   res.json(task);

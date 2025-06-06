@@ -28,7 +28,7 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // ✅ Update a Goal
-router.put('/:id', auth, async (req, res) => {
+router.patch('/:id', auth, async (req, res) => {
   const goal = await Goal.findOneAndUpdate({ _id: req.params.id, user: req.user }, req.body, { new: true });
   if (!goal) return res.status(404).json({ message: 'Goal not found' });
   res.json(goal);

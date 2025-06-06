@@ -5,8 +5,8 @@ const auth = require('../middleware/auth');
 
 // ✅ Create Habit
 router.post('/', auth, async (req, res) => {
-  const { name, frequency } = req.body;
-  const habit = await Habit.create({ user: req.user, name, frequency });
+  const { name, description, frequency } = req.body;
+  const habit = await Habit.create({ user: req.user, name, description, frequency });
   res.status(201).json(habit);
 });
 
@@ -17,7 +17,7 @@ router.get('/', auth, async (req, res) => {
 });
 
 // ✅ Mark Habit Complete (update streak)
-router.patch('/:id/complete', auth, async (req, res) => {
+router.post('/:id/complete', auth, async (req, res) => {
   const habit = await Habit.findOne({ _id: req.params.id, user: req.user });
   if (!habit) return res.status(404).json({ message: 'Habit not found' });
 

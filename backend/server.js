@@ -21,7 +21,10 @@ console.log('🚀 Starting server...'.yellow.bold);
 const app = express();
 
 // Security Middleware
-app.use(helmet()); // Security headers
+app.use(helmet({
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+  crossOriginEmbedderPolicy: false, //  May also be needed if you embed cross-origin resources
+})); // Security headers
 app.use(xss()); // Prevent XSS attacks
 app.use(hpp()); // Prevent HTTP Parameter Pollution
 
@@ -60,6 +63,8 @@ app.use('/api/goals', require('./routes/goals'));
 app.use('/api/tasks', require('./routes/tasks'));
 app.use('/api/habits', require('./routes/habits'));
 app.use('/api/notes', require('./routes/notes'));
+app.use('/api/ai', require('./routes/ai'));
+app.use('/api/stats', require('./routes/stats'));
 
 console.log('🛣️  Routes registered:'.cyan);
 console.log('   - /api/auth'.gray);
@@ -67,6 +72,8 @@ console.log('   - /api/goals'.gray);
 console.log('   - /api/tasks'.gray);
 console.log('   - /api/habits'.gray);
 console.log('   - /api/notes'.gray);
+console.log('   - /api/ai'.gray);
+console.log('   - /api/stats'.gray);
 
 // Apply security middleware
 securityMiddleware(app);
