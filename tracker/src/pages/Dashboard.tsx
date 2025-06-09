@@ -1,50 +1,52 @@
-import { useState, useEffect } from 'react';
-import axios from 'axios';
-import { useAuthStore } from '../store/authStore';
+import React, { useEffect, useMemo } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { useDataStore } from '../store/dataStore';
 import {
   CheckCircleIcon,
   FlagIcon,
   ChartBarIcon,
   DocumentTextIcon,
 } from '@heroicons/react/24/outline';
-import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
-import { auth } from '../config/firebase';
 
-interface Stats {
-  totalTasks: number;
-  completedTasks: number;
-  activeGoals: number;
-  activeHabits: number;
-  totalNotes: number;
-}
+const StatCard = React.memo<{
+  name: string;
+  value: string | number;
+  description: string;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  color: string;
+  bgColor: string;
+}>(({ name, value, description, icon: Icon, color, bgColor }) => (
+  <div className="relative bg-white pt-5 px-4 pb-12 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden">
+    <dt>
+      <div className={`absolute rounded-md p-3 ${bgColor}`}>
+        <Icon className={`h-6 w-6 ${color}`} aria-hidden="true" />
+      </div>
+      <p className="ml-16 text-sm font-medium text-gray-500 truncate">
+        {name}
+      </p>
+    </dt>
+    <dd className="ml-16 pb-6 flex items-baseline sm:pb-7">
+      <p className="text-2xl font-semibold text-gray-900">{value}</p>
+      <p className="ml-2 flex items-baseline text-sm text-gray-500">
+        {description}
+      </p>
+    </dd>
+  </div>
+));
+
+StatCard.displayName = 'StatCard';
 
 export default function Dashboard() {
-  const [stats, setStats] = useState<Stats>({
-    totalTasks: 0,
-    completedTasks: 0,
-    activeGoals: 0,
-    activeHabits: 0,
-    totalNotes: 0,
-  });
-  const token = useAuthStore((state) => state.user?.getIdToken());
-  const user = useAuthStore((state) => state.user);
+  const { user, loading: authLoading } = useAuth();
+  const { stats, loading: statsLoading, fetchStats } = useDataStore();
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await axios.get('/api/stats');
-        setStats(response.data);
-      } catch (error) {
-        console.error('Failed to fetch stats', error);
-      }
-    };
-
     if (user) {
       fetchStats();
     }
-  }, [user]);
+  }, [user, fetchStats]);
 
-  const stats_cards = [
+  const stats_cards = useMemo(() => [
     {
       name: 'Tasks',
       value: `${stats.completedTasks}/${stats.totalTasks}`,
@@ -77,7 +79,11 @@ export default function Dashboard() {
       color: 'text-yellow-600',
       bgColor: 'bg-yellow-100',
     },
-  ];
+  ], [stats]);
+
+  if (authLoading || statsLoading) {
+    return <div className="text-center py-10">Loading dashboard...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -92,25 +98,10 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {stats_cards.map((card) => (
-          <div
+          <StatCard
             key={card.name}
-            className="relative bg-white pt-5 px-4 pb-12 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden"
-          >
-            <dt>
-              <div className={`absolute rounded-md p-3 ${card.bgColor}`}>
-                <card.icon className={`h-6 w-6 ${card.color}`} aria-hidden="true" />
-              </div>
-              <p className="ml-16 text-sm font-medium text-gray-500 truncate">
-                {card.name}
-              </p>
-            </dt>
-            <dd className="ml-16 pb-6 flex items-baseline sm:pb-7">
-              <p className="text-2xl font-semibold text-gray-900">{card.value}</p>
-              <p className="ml-2 flex items-baseline text-sm text-gray-500">
-                {card.description}
-              </p>
-            </dd>
-          </div>
+            {...card}
+          />
         ))}
       </div>
 

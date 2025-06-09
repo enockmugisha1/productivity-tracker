@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
-import { Link, NavLink, useNavigate, Outlet } from 'react-router-dom';
+import React, { useState, Fragment, useMemo, useCallback } from 'react';
+import { Link, NavLink, useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { Dialog, Transition } from '@headlessui/react';
 import { 
   FiHome, FiCheckSquare, FiTarget, FiEdit3, FiUser, FiSettings, FiLogOut, FiMenu, FiX, FiMessageSquare 
 } from 'react-icons/fi'; // Feather icons
+import OptimizedImage from './OptimizedImage';
 
 interface LayoutProps {
   // children: React.ReactNode; // Removed children
@@ -18,12 +20,98 @@ const navItems = [
   { name: 'AI Assistant', path: '/ai-assistant', icon: <FiMessageSquare /> }, // New AI Assistant nav item
 ];
 
+const SidebarContent = React.memo<{ onLinkClick?: () => void }>(({ onLinkClick }) => {
+  const { logout, user } = useAuth();
+  
+  const menuItems = useMemo(() => [
+    { to: '/dashboard', icon: FiHome, text: 'Dashboard' },
+    { to: '/tasks', icon: FiCheckSquare, text: 'Tasks' },
+    { to: '/goals', icon: FiTarget, text: 'Goals' },
+    { to: '/habits', icon: FiEdit3, text: 'Habits' },
+    { to: '/notes', icon: FiEdit3, text: 'Notes' },
+    { to: '/ai-assistant', icon: FiMessageSquare, text: 'AI Assistant' },
+  ], []);
+
+  const bottomMenuItems = useMemo(() => [
+    { to: '/profile', icon: FiUser, text: 'Profile' },
+    { to: '/settings', icon: FiSettings, text: 'Settings' },
+  ], []);
+
+  const handleLogout = useCallback(async () => {
+    if (onLinkClick) onLinkClick();
+    await logout();
+  }, [onLinkClick, logout]);
+
+  const baseLinkClass = "flex items-center px-4 py-2 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200";
+  const activeLinkClass = "bg-primary-500 text-white dark:bg-primary-600";
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="p-4 flex items-center space-x-3 border-b border-gray-200 dark:border-gray-700">
+        {user?.photoURL ? (
+          <OptimizedImage
+            src={user.photoURL}
+            alt={user.displayName || 'User avatar'}
+            className="h-10 w-10 rounded-full object-cover"
+            width={40}
+            height={40}
+          />
+        ) : (
+          <div className="h-10 w-10 rounded-full bg-primary-500 flex items-center justify-center text-white text-lg font-bold">
+            {user?.displayName?.charAt(0).toUpperCase() || '?'}
+          </div>
+        )}
+        <div>
+          <h1 className="text-lg font-bold text-gray-800 dark:text-white">{user?.displayName}</h1>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Productivity Tracker</p>
+        </div>
+      </div>
+      <nav className="flex-grow p-4 space-y-2">
+        {menuItems.map(item => (
+          <NavLink
+            key={item.text}
+            to={item.to}
+            onClick={onLinkClick}
+            className={({ isActive }) => `${baseLinkClass} ${isActive ? activeLinkClass : ''}`}
+          >
+            <item.icon className="h-5 w-5 mr-3" />
+            {item.text}
+          </NavLink>
+        ))}
+      </nav>
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+        {bottomMenuItems.map(item => (
+          <NavLink
+            key={item.text}
+            to={item.to}
+            onClick={onLinkClick}
+            className={({ isActive }) => `${baseLinkClass} ${isActive ? activeLinkClass : ''}`}
+          >
+            <item.icon className="h-5 w-5 mr-3" />
+            {item.text}
+          </NavLink>
+        ))}
+        <button
+          onClick={handleLogout}
+          className={`${baseLinkClass} w-full text-red-500 dark:hover:bg-red-500 dark:hover:text-white`}
+        >
+          <FiLogOut className="h-5 w-5 mr-3" />
+          Logout
+        </button>
+      </div>
+    </div>
+  );
+});
+
+SidebarContent.displayName = 'SidebarContent';
+
 const Layout: React.FC<LayoutProps> = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const location = useLocation();
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     try {
       await logout();
       navigate('/login');
@@ -31,144 +119,99 @@ const Layout: React.FC<LayoutProps> = () => {
       console.error("Logout failed:", error);
       // Handle logout error display if needed
     }
-  };
+  }, [logout, navigate]);
 
-  const SidebarContent = () => (
-    <>
-      <div className="px-6 py-4">
-        <Link to="/dashboard" className="text-2xl font-bold text-white">
-          ProdTrack
-        </Link>
-      </div>
-      <nav className="mt-6 flex-1">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.name}
-            to={item.path}
-            className={({ isActive }) =>
-              `flex items-center px-6 py-3 text-base font-medium rounded-md transition-colors duration-150 
-              ${isActive
-                ? 'bg-gray-700 text-white' 
-                : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-              }`
-            }
-            onClick={() => setSidebarOpen(false)} // Close sidebar on mobile nav click
-          >
-            <span className="mr-3 text-lg">{item.icon}</span>
-            {item.name}
-          </NavLink>
-        ))}
-      </nav>
+  React.useEffect(() => {
+    setSidebarOpen(false);
+  }, [location]);
 
-      {/* User section at the bottom of sidebar */}
-      <div className="px-6 py-4 mt-auto border-t border-gray-700">
-        <div className="flex items-center mb-3">
-          {user?.photoURL ? (
-            <img src={user.photoURL} alt={user.displayName} className="h-10 w-10 rounded-full mr-3 object-cover" />
-          ) : (
-            <div className="h-10 w-10 rounded-full bg-gray-500 flex items-center justify-center text-white text-lg font-semibold mr-3">
-              {user?.displayName?.charAt(0).toUpperCase() || '?'}
-            </div>
-          )}
-          <div>
-            <p className="text-sm font-medium text-white">{user?.displayName}</p>
-            <p className="text-xs text-gray-400">{user?.email}</p>
-          </div>
-        </div>
-        <NavLink 
-          to="/profile"
-          className={({ isActive }) =>
-            `flex items-center w-full px-3 py-2 text-sm font-medium rounded-md transition-colors duration-150 
-            ${isActive ? 'bg-gray-700 text-white' : 'text-gray-400 hover:bg-gray-700 hover:text-white'}`
-          }
-          onClick={() => setSidebarOpen(false)}
-        >
-          <FiUser className="mr-2" /> Profile
-        </NavLink>
-        <NavLink 
-          to="/settings"
-          className={({ isActive }) =>
-            `flex items-center w-full px-3 py-2 mt-1 text-sm font-medium rounded-md transition-colors duration-150 
-            ${isActive ? 'bg-gray-700 text-white' : 'text-gray-400 hover:bg-gray-700 hover:text-white'}`
-          }
-          onClick={() => setSidebarOpen(false)}
-        >
-          <FiSettings className="mr-2" /> Settings
-        </NavLink>
-        <button 
-          onClick={handleLogout}
-          className="flex items-center w-full px-3 py-2 mt-1 text-sm font-medium text-red-400 hover:bg-red-700 hover:text-white rounded-md transition-colors duration-150"
-        >
-          <FiLogOut className="mr-2" /> Logout
-        </button>
-      </div>
-    </>
-  );
+  const toggleSidebar = useCallback(() => {
+    setSidebarOpen(prev => !prev);
+  }, []);
 
   return (
-    <div className="min-h-screen flex bg-gray-100">
-      {/* Sidebar for larger screens */}
-      <aside className="hidden md:flex md:flex-col md:w-64 bg-gray-800 text-white fixed inset-y-0 z-30">
-        <SidebarContent />
-      </aside>
-
-      {/* Mobile Sidebar (drawer) */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 flex z-40 md:hidden" role="dialog" aria-modal="true">
-          {/* Overlay */}
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-75" aria-hidden="true" onClick={() => setSidebarOpen(false)}></div>
-          {/* Sidebar */}
-          <aside className="relative flex-1 flex flex-col max-w-xs w-full bg-gray-800 text-white">
-            <div className="absolute top-0 right-0 -mr-12 pt-2">
-              <button
-                type="button"
-                className="ml-1 flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
-                onClick={() => setSidebarOpen(false)}
-              >
-                <span className="sr-only">Close sidebar</span>
-                <FiX className="h-6 w-6 text-white" aria-hidden="true" />
-              </button>
-            </div>
-            <SidebarContent />
-          </aside>
-          <div className="flex-shrink-0 w-14" aria-hidden="true">{/* Dummy element to force sidebar to shrink to fit close icon */ }</div>
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+      {/* Static sidebar for desktop */}
+      <div className="hidden lg:flex lg:flex-shrink-0">
+        <div className="flex flex-col w-64 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <SidebarContent />
         </div>
-      )}
+      </div>
 
-      {/* Main content area */}
-      <div className="md:pl-64 flex flex-col flex-1">
-        {/* Mobile Header with Hamburger Menu */}
-        <header className="md:hidden bg-gray-800 text-white shadow-md sticky top-0 z-20">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
-              <Link to="/dashboard" className="text-xl font-bold">
-                ProdTrack
-              </Link>
-              <button 
-                onClick={() => setSidebarOpen(true)}
-                className="p-2 rounded-md text-gray-300 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
-              >
-                <span className="sr-only">Open sidebar</span>
-                <FiMenu className="h-6 w-6" aria-hidden="true" />
-              </button>
+      {/* Mobile sidebar with transition */}
+      <Transition.Root show={sidebarOpen} as={Fragment}>
+        <Dialog as="div" className="relative z-40 lg:hidden" onClose={setSidebarOpen}>
+          <Transition.Child
+            as={Fragment}
+            enter="transition-opacity ease-linear duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="transition-opacity ease-linear duration-300"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-75" />
+          </Transition.Child>
+
+          <div className="fixed inset-0 flex z-40">
+            <Transition.Child
+              as={Fragment}
+              enter="transition ease-in-out duration-300 transform"
+              enterFrom="-translate-x-full"
+              enterTo="translate-x-0"
+              leave="transition ease-in-out duration-300 transform"
+              leaveFrom="translate-x-0"
+              leaveTo="-translate-x-full"
+            >
+              <Dialog.Panel className="relative flex-1 flex flex-col max-w-xs w-full bg-white dark:bg-gray-800">
+                <Transition.Child
+                  as={Fragment}
+                  enter="ease-in-out duration-300"
+                  enterFrom="opacity-0"
+                  enterTo="opacity-100"
+                  leave="ease-in-out duration-300"
+                  leaveFrom="opacity-100"
+                  leaveTo="opacity-0"
+                >
+                  <div className="absolute top-0 right-0 -mr-12 pt-2">
+                    <button
+                      type="button"
+                      className="ml-1 flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
+                      onClick={toggleSidebar}
+                    >
+                      <span className="sr-only">Close sidebar</span>
+                      <FiX className="h-6 w-6 text-white" aria-hidden="true" />
+                    </button>
+                  </div>
+                </Transition.Child>
+                <SidebarContent onLinkClick={toggleSidebar} />
+              </Dialog.Panel>
+            </Transition.Child>
+            <div className="flex-shrink-0 w-14" aria-hidden="true">
+              {/* Dummy element to force sidebar to shrink to fit close icon */}
             </div>
           </div>
-        </header>
+        </Dialog>
+      </Transition.Root>
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
-          {/* Page title could go here or be set by each page component */}
-          {/* <h1 className="text-2xl font-semibold text-gray-900 mb-6">Page Title</h1> */}
+      <div className="flex flex-col flex-1 overflow-y-auto">
+        {/* Mobile header */}
+        <div className="sticky top-0 z-10 lg:hidden pl-1 pt-1 sm:pl-3 sm:pt-3 bg-gray-100 dark:bg-gray-900">
+          <button
+            type="button"
+            className="-ml-0.5 -mt-0.5 h-12 w-12 inline-flex items-center justify-center rounded-md text-gray-500 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
+            onClick={toggleSidebar}
+          >
+            <span className="sr-only">Open sidebar</span>
+            <FiMenu className="h-6 w-6" aria-hidden="true" />
+          </button>
+        </div>
+        <main className="flex-1 p-4 md:p-6 lg:p-8">
           <Outlet />
         </main>
-
-        <footer className="bg-white border-t border-gray-200 px-4 sm:px-6 lg:px-8 py-4">
-          <p className="text-center text-sm text-gray-500">
-            © {new Date().getFullYear()} Productivity Tracker. All rights reserved.
-          </p>
-        </footer>
       </div>
     </div>
   );
 };
 
-export default Layout; 
+export default React.memo(Layout); 

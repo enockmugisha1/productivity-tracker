@@ -1,135 +1,256 @@
-import React, { useState, FormEvent, ChangeEvent } from 'react';
-import axios from 'axios';
-import { FiSend, FiUser, FiCpu } from 'react-icons/fi'; // Icons for user and AI
-import toast from 'react-hot-toast';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { useInView } from 'react-intersection-observer';
+import { FiSend, FiLoader, FiX, FiRefreshCw } from 'react-icons/fi';
+import { toast } from 'react-hot-toast';
+import { aiService } from '../services/aiService';
 
 interface Message {
   id: string;
-  text: string;
-  sender: 'user' | 'ai';
+  content: string;
+  role: 'user' | 'assistant';
+  timestamp: number;
+  isStreaming?: boolean;
+  error?: boolean;
+  retryCount?: number;
 }
 
 const AiAssistant: React.FC = () => {
-  const [inputMessage, setInputMessage] = useState<string>('');
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { ref: loadMoreRef, inView } = useInView({
+    threshold: 0,
+  });
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputMessage.trim()) return;
+    if (!input.trim() || isLoading) return;
 
     const userMessage: Message = {
-      id: Date.now().toString() + '-user',
-      text: inputMessage,
-      sender: 'user',
+      id: Date.now().toString(),
+      content: input.trim(),
+      role: 'user',
+      timestamp: Date.now(),
     };
-    setMessages((prevMessages) => [...prevMessages, userMessage]);
-    setInputMessage('');
+
+    const assistantMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      content: '',
+      role: 'assistant',
+      timestamp: Date.now(),
+      isStreaming: true,
+      retryCount: 0,
+    };
+
+    setMessages(prev => [...prev, userMessage, assistantMessage]);
+    setInput('');
     setIsLoading(true);
+    setRetryCount(0);
 
     try {
-      // Path should be /api/ai/ask for Vite proxy to forward to http://localhost:5007/api/ai/ask
-      const response = await axios.post('/api/ai/ask', { prompt: userMessage.text });
-      
-      const aiMessage: Message = {
-        id: Date.now().toString() + '-ai',
-        text: response.data.response,
-        sender: 'ai',
-      };
-      setMessages((prevMessages) => [...prevMessages, aiMessage]);
-    } catch (error: any) {
-      console.error('Error fetching AI response:', error);
-      const errorMessage = error.response?.data?.message || 'Failed to get response from AI. Please try again.';
-      toast.error(errorMessage);
-      // Optionally add the error as a message in the chat
-      const errorAiMessage: Message = {
-        id: Date.now().toString() + '-ai-error',
-        text: `Error: ${errorMessage}`,
-        sender: 'ai',
-      };
-      setMessages((prevMessages) => [...prevMessages, errorAiMessage]);
-    } finally {
+      await aiService.streamAIResponse(
+        input.trim(),
+        {
+          onData: (chunk) => {
+            setMessages(prev => prev.map(msg => 
+              msg.id === assistantMessage.id
+                ? { ...msg, content: msg.content + chunk }
+                : msg
+            ));
+          },
+          onError: (error) => {
+            console.error('AI response error:', error);
+            setMessages(prev => prev.map(msg => 
+              msg.id === assistantMessage.id
+                ? { 
+                    ...msg, 
+                    content: msg.content + '\n\nError: ' + error.message,
+                    isStreaming: false,
+                    error: true
+                  }
+                : msg
+            ));
+            toast.error(error.message || 'Failed to get AI response. Please try again.');
+          },
+          onComplete: () => {
+            setMessages(prev => prev.map(msg => 
+              msg.id === assistantMessage.id
+                ? { ...msg, isStreaming: false }
+                : msg
+            ));
+            setIsLoading(false);
+          },
+          onRetry: (attempt) => {
+            setRetryCount(attempt);
+            toast.loading(`Retrying... (${attempt}/3)`, { id: 'retry-toast' });
+          },
+        },
+        {
+          chunkSize: 15,
+          chunkDelay: 30,
+          maxRetries: 3,
+          retryDelay: 1000,
+        }
+      );
+    } catch (error) {
+      toast.error('Failed to get AI response. Please try again.');
+      console.error('AI response error:', error);
       setIsLoading(false);
     }
-  };
+  }, [input, isLoading]);
+
+  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  }, [handleSubmit]);
+
+  const cancelStream = useCallback(() => {
+    aiService.cancelStream();
+    setIsLoading(false);
+    setMessages(prev => prev.map(msg => 
+      msg.isStreaming ? { ...msg, isStreaming: false } : msg
+    ));
+    toast.dismiss('retry-toast');
+  }, []);
+
+  const retryMessage = useCallback((messageId: string) => {
+    const message = messages.find(m => m.id === messageId);
+    if (!message) return;
+
+    setMessages(prev => prev.map(msg => 
+      msg.id === messageId
+        ? { ...msg, isStreaming: true, error: false, retryCount: (msg.retryCount || 0) + 1 }
+        : msg
+    ));
+
+    aiService.streamAIResponse(
+      message.content,
+      {
+        onData: (chunk) => {
+          setMessages(prev => prev.map(msg => 
+            msg.id === messageId
+              ? { ...msg, content: msg.content + chunk }
+              : msg
+          ));
+        },
+        onError: (error) => {
+          console.error('AI response error:', error);
+          setMessages(prev => prev.map(msg => 
+            msg.id === messageId
+              ? { 
+                  ...msg, 
+                  content: msg.content + '\n\nError: ' + error.message,
+                  isStreaming: false,
+                  error: true
+                }
+              : msg
+          ));
+          toast.error(error.message || 'Failed to get AI response. Please try again.');
+        },
+        onComplete: () => {
+          setMessages(prev => prev.map(msg => 
+            msg.id === messageId
+              ? { ...msg, isStreaming: false }
+              : msg
+          ));
+        },
+      },
+      {
+        chunkSize: 15,
+        chunkDelay: 30,
+        maxRetries: 3,
+        retryDelay: 1000,
+      }
+    );
+  }, [messages]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-160px)] bg-gray-50 rounded-lg shadow-md"> {/* Adjust height as needed based on your layout */}
-      {/* Header */}
-      <header className="bg-indigo-600 text-white p-4 rounded-t-lg shadow">
-        <h1 className="text-xl font-semibold flex items-center">
-          <FiCpu className="mr-2 h-6 w-6" /> AI Assistant
-        </h1>
-      </header>
-
-      {/* Message Display Area */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
-        {messages.map((msg) => (
+    <div className="flex flex-col h-full max-w-4xl mx-auto">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.map((message) => (
           <div
-            key={msg.id}
-            className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+            key={message.id}
+            className={`flex ${
+              message.role === 'user' ? 'justify-end' : 'justify-start'
+            }`}
           >
             <div
-              className={`max-w-lg lg:max-w-xl px-4 py-3 rounded-xl shadow ${ 
-                msg.sender === 'user'
-                  ? 'bg-indigo-500 text-white'
-                  : 'bg-white text-gray-700'
+              className={`max-w-[80%] rounded-lg p-4 ${
+                message.role === 'user'
+                  ? 'bg-primary-500 text-white'
+                  : message.error
+                  ? 'bg-red-50 dark:bg-red-900/20'
+                  : 'bg-gray-100 dark:bg-gray-800'
               }`}
             >
-              <div className="flex items-center mb-1">
-                {msg.sender === 'user' ? (
-                  <FiUser className="h-5 w-5 mr-2" />
-                ) : (
-                  <FiCpu className="h-5 w-5 mr-2" />
-                )}
-                <span className="font-semibold text-sm">{msg.sender === 'user' ? 'You' : 'AI Assistant'}</span>
-              </div>
-              <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+              <p className="whitespace-pre-wrap">{message.content}</p>
+              {message.isStreaming && (
+                <div className="flex items-center mt-2">
+                  <FiLoader className="animate-spin h-4 w-4 mr-2" />
+                  <span className="text-xs opacity-70">AI is typing...</span>
+                  <button
+                    onClick={cancelStream}
+                    className="ml-2 p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full"
+                  >
+                    <FiX className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+              {message.error && (
+                <div className="flex items-center mt-2">
+                  <button
+                    onClick={() => retryMessage(message.id)}
+                    className="flex items-center text-xs text-red-500 hover:text-red-600"
+                  >
+                    <FiRefreshCw className="h-4 w-4 mr-1" />
+                    Retry
+                  </button>
+                </div>
+              )}
+              <span className="text-xs opacity-70 mt-1 block">
+                {new Date(message.timestamp).toLocaleTimeString()}
+              </span>
             </div>
           </div>
         ))}
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className="max-w-lg lg:max-w-xl px-4 py-3 rounded-xl shadow bg-white text-gray-700">
-              <div className="flex items-center">
-                <FiCpu className="h-5 w-5 mr-2 animate-pulse" />
-                <span className="font-semibold text-sm">AI Assistant is typing...</span>
-              </div>
-            </div>
-          </div>
-        )}
+        <div ref={messagesEndRef} />
+        <div ref={loadMoreRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="p-4 border-t border-gray-200 bg-white rounded-b-lg">
-        <form onSubmit={handleSubmit} className="flex items-center space-x-3">
-          <input
-            type="text"
-            value={inputMessage}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setInputMessage(e.target.value)}
-            placeholder="Ask the AI assistant anything..."
-            className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition duration-150"
-            disabled={isLoading}
+      <form onSubmit={handleSubmit} className="p-4 border-t dark:border-gray-700">
+        <div className="flex space-x-4">
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Type your message..."
+            className="flex-1 p-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            rows={1}
+            style={{ resize: 'none' }}
           />
           <button
             type="submit"
-            disabled={isLoading || !inputMessage.trim()}
-            className="p-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 transition duration-150 flex items-center"
+            disabled={isLoading || !input.trim()}
+            className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLoading ? (
-                <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-            ) : (
-                <FiSend className="h-5 w-5" />
-            )}
-            <span className="ml-2 hidden sm:inline">Send</span>
+            <FiSend className="h-5 w-5" />
           </button>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
   );
 };
 
-export default AiAssistant; 
+export default React.memo(AiAssistant); 

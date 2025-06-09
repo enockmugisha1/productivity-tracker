@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import { useAuthStore } from '../store/authStore';
+import { useAuth } from '../context/AuthContext';
+import { useDataStore } from '../store/dataStore';
+import { FiPlus, FiTrash2, FiCalendar } from 'react-icons/fi';
 
 interface Task {
   _id: string;
@@ -18,7 +20,9 @@ export default function Tasks() {
     description: '',
     dueDate: '',
   });
-  const user = useAuthStore((state) => state.user);
+  const [isFormVisible, setIsFormVisible] = useState(false);
+  const { user } = useAuth();
+  const fetchStats = useDataStore((state) => state.fetchStats);
 
   const fetchTasks = async () => {
     if (!user) {
@@ -26,10 +30,7 @@ export default function Tasks() {
       return;
     }
     try {
-      const idToken = await user.getIdToken();
-      const response = await axios.get('/api/tasks', {
-        headers: { Authorization: `Bearer ${idToken}` },
-      });
+      const response = await axios.get('/api/tasks');
       setTasks(response.data);
     } catch (error) {
       toast.error('Failed to fetch tasks');
@@ -41,6 +42,10 @@ export default function Tasks() {
     fetchTasks();
   }, [user]);
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setNewTask({ ...newTask, [e.target.name]: e.target.value });
+  };
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
@@ -48,39 +53,25 @@ export default function Tasks() {
       return;
     }
     try {
-      const idToken = await user.getIdToken();
-      await axios.post(
-        '/api/tasks',
-        newTask,
-        {
-          headers: { Authorization: `Bearer ${idToken}` },
-        }
-      );
+      await axios.post('/api/tasks', newTask);
       setNewTask({ title: '', description: '', dueDate: '' });
+      setIsFormVisible(false);
       toast.success('Task created successfully');
       fetchTasks();
+      fetchStats();
     } catch (error) {
       toast.error('Failed to create task');
     }
   };
 
   const toggleTaskStatus = async (taskId: string, currentStatus: string) => {
-    if (!user) {
-      toast.error('You must be logged in to update a task.');
-      return;
-    }
+    if (!user) return;
     try {
-      const idToken = await user.getIdToken();
-      await axios.patch(
-        `/api/tasks/${taskId}`,
-        {
-          status: currentStatus === 'pending' ? 'completed' : 'pending',
-        },
-        {
-          headers: { Authorization: `Bearer ${idToken}` },
-        }
-      );
+      await axios.patch(`/api/tasks/${taskId}`, {
+        status: currentStatus === 'pending' ? 'completed' : 'pending',
+      });
       fetchTasks();
+      fetchStats();
       toast.success('Task status updated');
     } catch (error) {
       toast.error('Failed to update task');
@@ -88,110 +79,110 @@ export default function Tasks() {
   };
 
   const deleteTask = async (taskId: string) => {
-    if (!user) {
-      toast.error('You must be logged in to delete a task.');
-      return;
-    }
-    try {
-      const idToken = await user.getIdToken();
-      await axios.delete(`/api/tasks/${taskId}`, {
-        headers: { Authorization: `Bearer ${idToken}` },
-      });
-      fetchTasks();
-      toast.success('Task deleted');
-    } catch (error) {
-      toast.error('Failed to delete task');
+    if (!user) return;
+    if (window.confirm('Are you sure you want to delete this task?')) {
+        try {
+          await axios.delete(`/api/tasks/${taskId}`);
+          fetchTasks();
+          fetchStats();
+          toast.success('Task deleted');
+        } catch (error) {
+          toast.error('Failed to delete task');
+        }
     }
   };
+
+  const AddTaskForm = () => (
+    <form onSubmit={handleSubmit} className="card dark:bg-gray-800 space-y-4 mb-6">
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Add New Task</h2>
+      <div>
+        <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Title
+        </label>
+        <input
+          type="text" id="title" name="title" required className="input"
+          value={newTask.title} onChange={handleInputChange}
+        />
+      </div>
+      <div>
+        <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Description (Optional)
+        </label>
+        <textarea
+          id="description" name="description" rows={5} className="input"
+          value={newTask.description} onChange={handleInputChange}
+        />
+      </div>
+      <div>
+        <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Due Date (Optional)
+        </label>
+        <input
+          type="date" id="dueDate" name="dueDate" className="input"
+          value={newTask.dueDate} onChange={handleInputChange}
+        />
+      </div>
+      <div className="flex justify-end space-x-3">
+        <button type="button" onClick={() => setIsFormVisible(false)} className="btn btn-secondary">
+            Cancel
+        </button>
+        <button type="submit" className="btn btn-primary">
+          Add Task
+        </button>
+      </div>
+    </form>
+  );
+
+  const TaskItem = ({ task }: { task: Task }) => (
+    <li className="card dark:bg-gray-800 flex items-start space-x-4">
+      <input
+        type="checkbox"
+        checked={task.status === 'completed'}
+        onChange={() => toggleTaskStatus(task._id, task.status)}
+        className="h-6 w-6 text-blue-500 bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 mt-1"
+      />
+      <div className="flex-grow">
+        <p className={`font-medium ${task.status === 'completed' ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>
+          {task.title}
+        </p>
+        {task.description && (
+            <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{task.description}</p>
+        )}
+        {task.dueDate && (
+          <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mt-2">
+            <FiCalendar className="mr-2" />
+            <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+          </div>
+        )}
+      </div>
+      <button onClick={() => deleteTask(task._id)} className="p-2 text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors">
+        <FiTrash2 />
+      </button>
+    </li>
+  );
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold text-gray-900">Tasks</h1>
-      </div>
-
-      {/* Add Task Form */}
-      <form onSubmit={handleSubmit} className="space-y-4 bg-white p-6 rounded-lg shadow">
-        <div>
-          <label htmlFor="title" className="block text-sm font-medium text-gray-700">
-            Title
-          </label>
-          <input
-            type="text"
-            id="title"
-            required
-            className="input mt-1"
-            value={newTask.title}
-            onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-          />
-        </div>
-        <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-            Description
-          </label>
-          <textarea
-            id="description"
-            rows={3}
-            className="input mt-1"
-            value={newTask.description}
-            onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-          />
-        </div>
-        <div>
-          <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700">
-            Due Date
-          </label>
-          <input
-            type="date"
-            id="dueDate"
-            className="input mt-1"
-            value={newTask.dueDate}
-            onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
-          />
-        </div>
-        <button type="submit" className="btn btn-primary">
-          Add Task
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Tasks</h1>
+        <button onClick={() => setIsFormVisible(!isFormVisible)} className="btn btn-primary flex items-center">
+          <FiPlus className="mr-2" />
+          {isFormVisible ? 'Close Form' : 'Add Task'}
         </button>
-      </form>
-
-      {/* Tasks List */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
-        <ul className="divide-y divide-gray-200">
-          {Array.isArray(tasks) && tasks.map((task) => (
-            <li key={task._id} className="px-6 py-4 hover:bg-gray-50 transition-colors duration-150">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={task.status === 'completed'}
-                    onChange={() => toggleTaskStatus(task._id, task.status)}
-                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                  />
-                  <div className="ml-3">
-                    <p className={`text-sm font-medium ${
-                      task.status === 'completed' ? 'text-gray-400 line-through' : 'text-gray-900'
-                    }`}>
-                      {task.title}
-                    </p>
-                    <p className="text-sm text-gray-500">{task.description}</p>
-                    {task.dueDate && (
-                      <p className="text-xs text-gray-400">
-                        Due: {new Date(task.dueDate).toLocaleDateString()}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <button
-                  onClick={() => deleteTask(task._id)}
-                  className="text-red-600 hover:text-red-900 ml-4"
-                >
-                  Delete
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
       </div>
+
+      {isFormVisible && <AddTaskForm />}
+
+      <ul className="space-y-4">
+        {tasks.length > 0 ? (
+            tasks.map((task) => <TaskItem key={task._id} task={task} />)
+        ) : (
+            <div className="text-center py-12">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">No tasks yet</h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Click "Add Task" to get started.</p>
+            </div>
+        )}
+      </ul>
     </div>
   );
 }

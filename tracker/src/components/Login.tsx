@@ -1,28 +1,37 @@
-import { signInWithRedirect, GoogleAuthProvider } from 'firebase/auth';
-import { auth } from '../config/firebase';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { FcGoogle } from 'react-icons/fc';
+import { useAuth } from '../context/AuthContext';
+import { useEffect } from 'react';
 
-export default function Login() {
-  const { error, isLoading, user } = useAuthStore();
+const Login: React.FC = () => {
+  const { error: authStoreError, loading: authStoreLoading } = useAuthStore();
+  const { googleLogin, loading: authContextLoading, error: authContextError, user } = useAuth();
   const navigate = useNavigate();
 
-  // If user is already logged in, redirect to dashboard
-  if (user) {
-    navigate('/');
-    return null;
-  }
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const handleGoogleSignIn = async () => {
     try {
-      const provider = new GoogleAuthProvider();
-      await signInWithRedirect(auth, provider);
-    } catch (error) {
-      console.error('Error signing in with Google:', error);
+      await googleLogin();
+      // Navigation will be handled by the useEffect hook watching the user state
+    } catch (err) {
       toast.error('Failed to sign in with Google');
+      console.error(err);
     }
   };
+
+  const isLoading = authStoreLoading || authContextLoading;
+  const error = authStoreError || authContextError;
+
+  if (authStoreLoading) { // from zustand, for initial firebase state
+    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -42,25 +51,28 @@ export default function Login() {
           </div>
         )}
 
-        <div className="mt-8 space-y-6">
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300"></div>
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="bg-white px-2 text-gray-500">Or continue with</span>
+          </div>
+        </div>
+
+        <div>
           <button
             onClick={handleGoogleSignIn}
             disabled={isLoading}
-            className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${
-              isLoading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'
-            } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
+            className="w-full inline-flex justify-center items-center py-3 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
           >
-            {isLoading ? (
-              <div className="flex items-center">
-                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
-                Signing in...
-              </div>
-            ) : (
-              'Sign in with Google'
-            )}
+            <FcGoogle className="h-6 w-6 mr-2" />
+            Sign in with Google
           </button>
         </div>
       </div>
     </div>
   );
-} 
+};
+
+export default Login; 

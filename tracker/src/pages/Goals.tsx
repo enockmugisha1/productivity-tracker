@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import { useAuthStore } from '../store/authStore';
+import { useAuth } from '../context/AuthContext';
+import { useDataStore } from '../store/dataStore';
+import { FiPlus, FiTarget, FiCalendar, FiTrash2 } from 'react-icons/fi';
 
 interface Goal {
   _id: string;
@@ -14,23 +16,15 @@ interface Goal {
 
 export default function Goals() {
   const [goals, setGoals] = useState<Goal[]>([]);
-  const [newGoal, setNewGoal] = useState({
-    title: '',
-    description: '',
-    targetDate: '',
-  });
-  const user = useAuthStore((state) => state.user);
+  const [newGoal, setNewGoal] = useState({ title: '', description: '', targetDate: '' });
+  const [isFormVisible, setIsFormVisible] = useState(false);
+  const { user } = useAuth();
+  const fetchStats = useDataStore((state) => state.fetchStats);
 
   const fetchGoals = async () => {
-    if (!user) {
-      setGoals([]);
-      return;
-    }
+    if (!user) { setGoals([]); return; }
     try {
-      const idToken = await user.getIdToken();
-      const response = await axios.get('/api/goals', {
-        headers: { Authorization: `Bearer ${idToken}` },
-      });
+      const response = await axios.get('/api/goals');
       setGoals(response.data);
     } catch (error) {
       toast.error('Failed to fetch goals');
@@ -39,168 +33,133 @@ export default function Goals() {
   };
 
   useEffect(() => {
-    fetchGoals();
+    if(user) fetchGoals();
   }, [user]);
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setNewGoal({ ...newGoal, [e.target.name]: e.target.value });
+  };
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) {
-      toast.error('You must be logged in to create a goal.');
-      return;
-    }
+    if (!user) { toast.error('You must be logged in.'); return; }
     try {
-      const idToken = await user.getIdToken();
-      await axios.post(
-        '/api/goals',
-        { ...newGoal, progress: 0, status: 'active' },
-        {
-          headers: { Authorization: `Bearer ${idToken}` },
-        }
-      );
+      await axios.post('/api/goals', { ...newGoal, progress: 0, status: 'active' });
       setNewGoal({ title: '', description: '', targetDate: '' });
+      setIsFormVisible(false);
       toast.success('Goal created successfully');
       fetchGoals();
+      fetchStats();
     } catch (error) {
       toast.error('Failed to create goal');
     }
   };
 
-  const updateProgress = async (goalId: string, progress: number) => {
-    if (!user) {
-      toast.error('You must be logged in to update progress.');
-      return;
-    }
+  const updateGoal = async (goalId: string, data: Partial<Goal>) => {
+    if (!user) return;
     try {
-      const idToken = await user.getIdToken();
-      await axios.patch(
-        `/api/goals/${goalId}`,
-        { progress },
-        {
-          headers: { Authorization: `Bearer ${idToken}` },
-        }
-      );
+      await axios.patch(`/api/goals/${goalId}`, data);
       fetchGoals();
-      toast.success('Progress updated');
+      fetchStats();
+      toast.success('Goal updated');
     } catch (error) {
-      toast.error('Failed to update progress');
+      toast.error('Failed to update goal');
+    }
+  };
+  
+  const deleteGoal = async (goalId: string) => {
+    if (!user) return;
+    if (window.confirm('Are you sure you want to delete this goal?')) {
+        try {
+          await axios.delete(`/api/goals/${goalId}`);
+          fetchGoals();
+          fetchStats();
+          toast.success('Goal deleted');
+        } catch (error) {
+          toast.error('Failed to delete goal');
+        }
     }
   };
 
-  const updateStatus = async (goalId: string, status: Goal['status']) => {
-    if (!user) {
-      toast.error('You must be logged in to update status.');
-      return;
-    }
-    try {
-      const idToken = await user.getIdToken();
-      await axios.patch(
-        `/api/goals/${goalId}`,
-        { status },
-        {
-          headers: { Authorization: `Bearer ${idToken}` },
-        }
-      );
-      fetchGoals();
-      toast.success('Status updated');
-    } catch (error) {
-      toast.error('Failed to update status');
-    }
-  };
+  const AddGoalForm = () => (
+    <form onSubmit={handleSubmit} className="card dark:bg-gray-800 space-y-4 mb-6">
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Add New Goal</h2>
+      <div>
+        <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title</label>
+        <input type="text" id="title" name="title" required className="input" value={newGoal.title} onChange={handleInputChange}/>
+      </div>
+      <div>
+        <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description (Optional)</label>
+        <textarea id="description" name="description" rows={5} className="input" value={newGoal.description} onChange={handleInputChange}/>
+      </div>
+      <div>
+        <label htmlFor="targetDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Target Date</label>
+        <input type="date" id="targetDate" name="targetDate" required className="input" value={newGoal.targetDate} onChange={handleInputChange}/>
+      </div>
+      <div className="flex justify-end space-x-3">
+        <button type="button" onClick={() => setIsFormVisible(false)} className="btn btn-secondary">Cancel</button>
+        <button type="submit" className="btn btn-primary">Add Goal</button>
+      </div>
+    </form>
+  );
+
+  const GoalCard = ({ goal }: { goal: Goal }) => (
+    <div className="card dark:bg-gray-800 space-y-4">
+      <div className="flex justify-between items-start">
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white">{goal.title}</h3>
+        <select
+          value={goal.status}
+          onChange={(e) => updateGoal(goal._id, { status: e.target.value as Goal['status'] })}
+          className="input !w-auto text-sm"
+        >
+          <option value="active">Active</option>
+          <option value="completed">Completed</option>
+          <option value="abandoned">Abandoned</option>
+        </select>
+      </div>
+      {goal.description && <p className="text-sm text-gray-600 dark:text-gray-300">{goal.description}</p>}
+      <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
+        <FiCalendar className="mr-2" />
+        Target: {new Date(goal.targetDate).toLocaleDateString()}
+      </div>
+      <div>
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Progress: {goal.progress}%</label>
+        <input
+          type="range" min="0" max="100" value={goal.progress}
+          onChange={(e) => updateGoal(goal._id, { progress: Number(e.target.value) })}
+          className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer mt-1"
+        />
+      </div>
+      <div className="flex justify-end">
+          <button onClick={() => deleteGoal(goal._id)} className="p-2 text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors">
+            <FiTrash2 />
+          </button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold text-gray-900">Goals</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Goals</h1>
+        <button onClick={() => setIsFormVisible(!isFormVisible)} className="btn btn-primary flex items-center">
+          <FiPlus className="mr-2" />
+          {isFormVisible ? 'Close Form' : 'Add Goal'}
+        </button>
       </div>
 
-      {/* Add Goal Form */}
-      <form onSubmit={handleSubmit} className="space-y-4 bg-white p-6 rounded-lg shadow">
-        <div>
-          <label htmlFor="title" className="block text-sm font-medium text-gray-700">
-            Title
-          </label>
-          <input
-            type="text"
-            id="title"
-            required
-            className="input mt-1"
-            value={newGoal.title}
-            onChange={(e) => setNewGoal({ ...newGoal, title: e.target.value })}
-          />
-        </div>
-        <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-            Description
-          </label>
-          <textarea
-            id="description"
-            rows={3}
-            className="input mt-1"
-            value={newGoal.description}
-            onChange={(e) => setNewGoal({ ...newGoal, description: e.target.value })}
-          />
-        </div>
-        <div>
-          <label htmlFor="targetDate" className="block text-sm font-medium text-gray-700">
-            Target Date
-          </label>
-          <input
-            type="date"
-            id="targetDate"
-            required
-            className="input mt-1"
-            value={newGoal.targetDate}
-            onChange={(e) => setNewGoal({ ...newGoal, targetDate: e.target.value })}
-          />
-        </div>
-        <button type="submit" className="btn btn-primary">
-          Add Goal
-        </button>
-      </form>
+      {isFormVisible && <AddGoalForm />}
 
-      {/* Goals List */}
-      <div className="space-y-4">
-        {Array.isArray(goals) && goals.map((goal) => (
-          <div key={goal._id} className="bg-white shadow rounded-lg p-6">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="text-lg font-medium text-gray-900">{goal.title}</h3>
-                <p className="mt-1 text-sm text-gray-500">{goal.description}</p>
-                <p className="mt-1 text-xs text-gray-400">
-                  Target: {new Date(goal.targetDate).toLocaleDateString()}
-                </p>
-              </div>
-              <select
-                value={goal.status}
-                onChange={(e) => updateStatus(goal._id, e.target.value as Goal['status'])}
-                className="text-sm border-gray-300 rounded-md"
-              >
-                <option value="active">Active</option>
-                <option value="completed">Completed</option>
-                <option value="abandoned">Abandoned</option>
-              </select>
+      <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2">
+        {goals.length > 0 ? (
+            goals.map((goal) => <GoalCard key={goal._id} goal={goal} />)
+        ) : (
+            <div className="text-center py-12 col-span-full">
+                <FiTarget className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mt-2">No goals yet</h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Click "Add Goal" to get started.</p>
             </div>
-            <div className="mt-4">
-              <div className="flex items-center">
-                <span className="text-sm font-medium text-gray-700">Progress: {goal.progress}%</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={goal.progress}
-                  onChange={(e) => updateProgress(goal._id, Number(e.target.value))}
-                  className="ml-4 flex-1"
-                />
-              </div>
-              <div className="mt-2 w-full bg-gray-200 rounded-full h-2.5">
-                <div
-                  className="bg-primary-600 h-2.5 rounded-full"
-                  style={{ width: `${goal.progress}%` }}
-                ></div>
-              </div>
-            </div>
-          </div>
-        ))}
+        )}
       </div>
     </div>
   );

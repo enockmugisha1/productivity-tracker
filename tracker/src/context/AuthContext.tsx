@@ -29,8 +29,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5007/api';
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,7 +41,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const idToken = await firebaseUser.getIdToken();
           // Verify token with backend and get app-specific user data
-          const response = await axios.post(`${API_URL}/auth/verify-token`, { token: idToken });
+          const response = await axios.post('/api/auth/verify-token', {
+            token: idToken,
+            firebaseUid: firebaseUser.uid
+          });
           localStorage.setItem('token', response.data.token); // Assuming backend sends its own token
           setUser(response.data.user);
           setError(null);
@@ -68,7 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setError(null);
       setLoading(true);
-      const response = await axios.post(`${API_URL}/auth/login`, {
+      const response = await axios.post('/api/auth/login', {
         email,
         password
       });
@@ -86,7 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setError(null);
       setLoading(true);
-      const response = await axios.post(`${API_URL}/auth/register`, {
+      const response = await axios.post('/api/auth/register', {
         email,
         password,
         displayName
@@ -121,7 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(firebaseAuth, provider);
+      await signInWithPopup(firebaseAuth, provider);
     } catch (err: any) {
       console.error("Google Sign-In error:", err);
       localStorage.removeItem('token');
@@ -135,7 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const token = localStorage.getItem('token');
       const response = await axios.patch(
-        `${API_URL}/auth/settings`,
+        '/api/auth/settings',
         { settings },
         {
           headers: { Authorization: `Bearer ${token}` }

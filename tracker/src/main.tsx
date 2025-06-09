@@ -3,10 +3,23 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 import { Toaster } from 'react-hot-toast';
-// import axios from 'axios'; // No longer needed here for baseURL setting
+import axios from 'axios';
 
-// Remove the default baseURL setting for Axios
-// axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5007/api';
+// Set the default base URL for all Axios requests
+axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5007';
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js')
+      .then(registration => {
+        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+      })
+      .catch(error => {
+        console.log('ServiceWorker registration failed: ', error);
+      });
+  });
+}
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
