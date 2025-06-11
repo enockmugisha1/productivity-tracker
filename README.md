@@ -101,17 +101,14 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
 - React community for the amazing framework
 - Tailwind CSS for the utility-first CSS framework
-- All contributors who have helped shape this project
+  
 
 ## 📧 Contact
 
-Your Name - [@yourtwitter](https://twitter.com/yourtwitter)
-Project Link: [https://github.com/yourusername/productivity-tracker](https://github.com/yourusername/productivity-tracker) 
+Enock Mugisha - e.mugisha4@alustudent.com
+Project Link: https://github.com/enockmugisha1/productivity-tracker
