@@ -95,13 +95,13 @@ router.post('/login', async (req, res) => {
 // Verify Firebase token and create/update user in our database
 router.post('/verify-token', async (req, res) => {
   try {
-    const { token } = req.body;
+    const { token, firebaseUid } = req.body;
     
     // Verify the Firebase token
     const decodedToken = await admin.auth().verifyIdToken(token);
     
     // Check if user exists in our database
-    let user = await User.findOne({ firebaseUid: decodedToken.uid });
+    let user = await User.findOne({ firebaseUid: firebaseUid });
     
     if (!user) {
       // Create new user if they don't exist

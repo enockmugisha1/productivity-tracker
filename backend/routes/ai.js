@@ -1,25 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const OpenAI = require('openai');
-const auth = require('../middleware/auth'); // Corrected path and variable name
+const { Ollama } = require('ollama');
+const auth = require('../middleware/auth');
 
-// Check for OpenAI API Key during initialization
-if (!process.env.OPENAI_API_KEY) {
-  console.error('🔴 FATAL ERROR: OPENAI_API_KEY is not set in the environment variables.');
-  console.error('Please add OPENAI_API_KEY to your backend/.env file.');
-  // Forcing a crash if the key is essential for the module to load, 
-  // or you could allow the app to start but AI features would fail.
-  // Given it crashes now, making it explicit is better.
-  throw new Error('OPENAI_API_KEY is missing. AI features cannot be initialized.'); 
-}
-
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const ollama = new Ollama();
 
 // @route   POST /api/ai/ask
-// @desc    Send a prompt to OpenAI and get a response
+// @desc    Send a prompt to Ollama and get a response
 // @access  Private
 router.post('/ask', auth, async (req, res) => {
   const { prompt } = req.body;
@@ -29,23 +16,23 @@ router.post('/ask', auth, async (req, res) => {
   }
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo', // Or your preferred model
+    const response = await ollama.chat({
+      model: 'llama2',
       messages: [{ role: 'user', content: prompt }],
     });
 
-    if (completion.choices && completion.choices.length > 0 && completion.choices[0].message) {
-      res.json({ response: completion.choices[0].message.content });
+    if (response.message) {
+      res.json({ response: response.message.content });
     } else {
       res.status(500).json({ message: 'Failed to get a valid response from AI' });
     }
   } catch (error) {
-    console.error('OpenAI API error:', error);
-    if (error instanceof OpenAI.APIError) {
-      res.status(error.status || 500).json({ message: error.message || 'Error communicating with AI service' });
-    } else {
-      res.status(500).json({ message: 'Internal server error while processing AI request' });
+    if (error.cause && error.cause.code === 'ECONNREFUSED') {
+      console.error('Ollama connection refused. Is Ollama running?');
+      return res.status(500).json({ message: 'Could not connect to AI service. Please ensure Ollama is running.' });
     }
+    console.error('Ollama API error:', error);
+    res.status(500).json({ message: 'Error communicating with AI service' });
   }
 });
 
