@@ -1,10 +1,12 @@
 import React, { useState, Fragment, useMemo, useCallback } from 'react';
 import { Link, NavLink, useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useThemeContext } from '../context/ThemeContext';
 import { Dialog, Transition } from '@headlessui/react';
 import { 
-  FiHome, FiCheckSquare, FiTarget, FiEdit3, FiUser, FiSettings, FiLogOut, FiMenu, FiX, FiMessageSquare 
-} from 'react-icons/fi'; // Feather icons
+  FiHome, FiCheckSquare, FiTarget, FiEdit3, FiUser, FiSettings, FiLogOut, FiMenu, FiX, FiMessageSquare,
+  FiSun, FiMoon, FiMonitor, FiDollarSign
+} from 'react-icons/fi';
 import OptimizedImage from './OptimizedImage';
 
 interface LayoutProps {
@@ -29,6 +31,7 @@ const SidebarContent = React.memo<{ onLinkClick?: () => void }>(({ onLinkClick }
     { to: '/goals', icon: FiTarget, text: 'Goals' },
     { to: '/habits', icon: FiEdit3, text: 'Habits' },
     { to: '/notes', icon: FiEdit3, text: 'Notes' },
+    { to: '/expenses', icon: FiDollarSign, text: 'Expenses' },
     { to: '/ai-assistant', icon: FiMessageSquare, text: 'AI Assistant' },
   ], []);
 
@@ -55,6 +58,9 @@ const SidebarContent = React.memo<{ onLinkClick?: () => void }>(({ onLinkClick }
             className="h-10 w-10 rounded-full object-cover"
             width={40}
             height={40}
+            loading="eager"
+            decoding="async"
+            fetchPriority="high"
           />
         ) : (
           <div className="h-10 w-10 rounded-full bg-primary-500 flex items-center justify-center text-white text-lg font-bold">
@@ -107,6 +113,7 @@ SidebarContent.displayName = 'SidebarContent';
 
 const Layout: React.FC<LayoutProps> = () => {
   const { user, logout } = useAuth();
+  const { theme, setTheme } = useThemeContext();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
@@ -117,7 +124,6 @@ const Layout: React.FC<LayoutProps> = () => {
       navigate('/login');
     } catch (error) {
       console.error("Logout failed:", error);
-      // Handle logout error display if needed
     }
   }, [logout, navigate]);
 
@@ -128,6 +134,24 @@ const Layout: React.FC<LayoutProps> = () => {
   const toggleSidebar = useCallback(() => {
     setSidebarOpen(prev => !prev);
   }, []);
+
+  const getThemeIcon = () => {
+    switch (theme) {
+      case 'light':
+        return <FiSun className="h-5 w-5" />;
+      case 'dark':
+        return <FiMoon className="h-5 w-5" />;
+      default:
+        return <FiMonitor className="h-5 w-5" />;
+    }
+  };
+
+  const toggleTheme = () => {
+    const themes: ('light' | 'dark' | 'system')[] = ['light', 'dark', 'system'];
+    const currentIndex = themes.indexOf(theme);
+    const nextIndex = (currentIndex + 1) % themes.length;
+    setTheme(themes[nextIndex]);
+  };
 
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
@@ -196,7 +220,7 @@ const Layout: React.FC<LayoutProps> = () => {
 
       <div className="flex flex-col flex-1 overflow-y-auto">
         {/* Mobile header */}
-        <div className="sticky top-0 z-10 lg:hidden pl-1 pt-1 sm:pl-3 sm:pt-3 bg-gray-100 dark:bg-gray-900">
+        <div className="sticky top-0 z-10 lg:hidden pl-1 pt-1 sm:pl-3 sm:pt-3 bg-gray-100 dark:bg-gray-900 flex items-center justify-between">
           <button
             type="button"
             className="-ml-0.5 -mt-0.5 h-12 w-12 inline-flex items-center justify-center rounded-md text-gray-500 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
@@ -204,6 +228,14 @@ const Layout: React.FC<LayoutProps> = () => {
           >
             <span className="sr-only">Open sidebar</span>
             <FiMenu className="h-6 w-6" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="mr-4 p-2 rounded-full text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
+            onClick={toggleTheme}
+            aria-label="Toggle theme"
+          >
+            {getThemeIcon()}
           </button>
         </div>
         <main className="flex-1 p-4 md:p-6 lg:p-8">

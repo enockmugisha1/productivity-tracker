@@ -1,51 +1,74 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 
-type Theme = 'light' | 'dark';
+type Theme = 'light' | 'dark' | 'system';
 
 interface ThemeContextType {
   theme: Theme;
   toggleTheme: () => void;
+  setTheme: (theme: Theme) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, updateUserSettings, loading } = useAuth();
-  const [theme, setTheme] = useState<Theme>('light');
+  const [theme, setThemeState] = useState<Theme>('light');
+  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
 
   // Initialize theme from localStorage or user settings
   useEffect(() => {
     const storedTheme = localStorage.getItem('theme') as Theme;
     if (user?.settings?.theme) {
-      setTheme(user.settings.theme);
+      setThemeState(user.settings.theme);
     } else if (storedTheme) {
-      setTheme(storedTheme);
+      setThemeState(storedTheme);
     }
   }, [user]);
+
+  // Handle system theme changes
+  useEffect(() => {
+    if (theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleChange = (e: MediaQueryListEvent) => {
+        setResolvedTheme(e.matches ? 'dark' : 'light');
+      };
+
+      // Set initial value
+      setResolvedTheme(mediaQuery.matches ? 'dark' : 'light');
+
+      // Listen for changes
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
+    } else {
+      setResolvedTheme(theme as 'light' | 'dark');
+    }
+  }, [theme]);
 
   // Apply theme class to the root element and save to localStorage
   useEffect(() => {
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark');
-    root.classList.add(theme);
+    root.classList.add(resolvedTheme);
     localStorage.setItem('theme', theme);
-  }, [theme]);
+  }, [resolvedTheme, theme]);
 
-  const toggleTheme = useCallback(async () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
+  const setTheme = useCallback(async (newTheme: Theme) => {
+    setThemeState(newTheme);
     if (user) {
       await updateUserSettings({
-        emailNotifications: false,
-        pushNotifications: false,
         ...user.settings,
         theme: newTheme
       });
     }
-  }, [theme, user, updateUserSettings]);
+  }, [user, updateUserSettings]);
 
-  const value = { theme, toggleTheme };
+  const toggleTheme = useCallback(async () => {
+    const newTheme = theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light';
+    await setTheme(newTheme);
+  }, [theme, setTheme]);
+
+  const value = { theme, toggleTheme, setTheme };
 
   return (
     <ThemeContext.Provider value={value}>

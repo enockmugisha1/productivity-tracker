@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import { auth as firebaseAuth } from '../config/firebase'; // Import Firebase auth
-import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth'; // Import Firebase auth methods
+import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut as firebaseSignOut, updateProfile } from 'firebase/auth'; // Import Firebase auth methods
 
 interface User {
   id: string;
@@ -25,6 +25,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   googleLogin: () => Promise<void>;
   updateUserSettings: (settings: User['settings']) => Promise<void>;
+  updateProfilePicture: (file: File) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -149,6 +150,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateProfilePicture = async (file: File) => {
+    try {
+      setError(null);
+      setLoading(true);
+
+      // Create form data
+      const formData = new FormData();
+      formData.append('photo', file);
+
+      // Upload to backend
+      const token = localStorage.getItem('token');
+      const response = await axios.post('/api/auth/upload-photo', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      // Update Firebase profile
+      if (firebaseAuth.currentUser) {
+        await updateProfile(firebaseAuth.currentUser, {
+          photoURL: response.data.photoURL
+        });
+      }
+
+      // Update local user state
+      setUser(prev => prev ? { ...prev, photoURL: response.data.photoURL } : null);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to update profile picture');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Set up axios interceptor for token
   useEffect(() => {
     const interceptor = axios.interceptors.request.use(
@@ -177,7 +213,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     register,
     logout,
     googleLogin,
-    updateUserSettings
+    updateUserSettings,
+    updateProfilePicture
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
