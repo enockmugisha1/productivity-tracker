@@ -18,10 +18,16 @@ const AiAssistant: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { ref: loadMoreRef, inView } = useInView({
-    threshold: 0,
+
+  const { ref: loadMoreRef } = useInView({
+    threshold: 0.5,
+    onChange: (visible) => {
+      if (visible && !isLoading) {
+        // Load more messages if needed
+        // This functionality can be implemented later
+      }
+    }
   });
 
   const scrollToBottom = useCallback(() => {
@@ -55,7 +61,6 @@ const AiAssistant: React.FC = () => {
     setMessages(prev => [...prev, userMessage, assistantMessage]);
     setInput('');
     setIsLoading(true);
-    setRetryCount(0);
 
     try {
       await aiService.streamAIResponse(
@@ -91,7 +96,6 @@ const AiAssistant: React.FC = () => {
             setIsLoading(false);
           },
           onRetry: (attempt) => {
-            setRetryCount(attempt);
             toast.loading(`Retrying... (${attempt}/3)`, { id: 'retry-toast' });
           },
         },

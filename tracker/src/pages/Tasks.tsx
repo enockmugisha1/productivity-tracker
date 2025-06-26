@@ -5,12 +5,20 @@ import { useAuth } from '../context/AuthContext';
 import { useDataStore } from '../store/dataStore';
 import { FiPlus, FiTrash2, FiCalendar } from 'react-icons/fi';
 
+interface Location {
+  lat: number;
+  lng: number;
+  address?: string;
+  label?: string;
+}
+
 interface Task {
   _id: string;
   title: string;
   description: string;
   status: 'pending' | 'completed';
   dueDate: string;
+  location?: Location;
 }
 
 export default function Tasks() {
@@ -142,7 +150,8 @@ export default function Tasks() {
         className="h-6 w-6 text-blue-500 bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 mt-1"
       />
       <div className="flex-grow">
-        <p className={`font-medium ${task.status === 'completed' ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>
+        <p className={`font-medium ${task.status === 'completed' ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}
+        >
           {task.title}
         </p>
         {task.description && (

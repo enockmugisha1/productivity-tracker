@@ -40,7 +40,11 @@ const Settings: React.FC = () => {
     setIsSaving(true);
 
     try {
-      await updateUserSettings({ theme, ...user?.settings, ...notificationSettings });
+      await updateUserSettings({ 
+        theme: theme as 'light' | 'dark', 
+        ...user?.settings, 
+        ...notificationSettings 
+      });
       setSuccess('Settings updated successfully!');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {

@@ -6,7 +6,7 @@ import { formatCurrency } from '../config/currencies';
 import AddTransaction from '../components/AddTransaction';
 import TransactionCharts from '../components/TransactionCharts';
 import CurrencySelector from '../components/CurrencySelector';
-import { FiPlus, FiDownload, FiFilter, FiTrash2, FiEdit2 } from 'react-icons/fi';
+import { FiPlus, FiDownload, FiFilter, FiTrash2 } from 'react-icons/fi';
 
 const Expenses: React.FC = () => {
   const { user } = useAuth();
@@ -232,11 +232,7 @@ const Expenses: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex items-center space-x-4">
-                    <span
-                      className={`font-semibold ${
-                        transaction.type === 'income' ? 'text-green-500' : 'text-red-500'
-                      }`}
-                    >
+                    <span className={`font-semibold ${transaction.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
                       {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount, currency)}
                     </span>
                     <div className="flex space-x-2">

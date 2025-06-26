@@ -12,7 +12,7 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, updateUserSettings, loading } = useAuth();
+  const { user, updateUserSettings } = useAuth();
   const [theme, setThemeState] = useState<Theme>('light');
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
 
@@ -55,10 +55,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const setTheme = useCallback(async (newTheme: Theme) => {
     setThemeState(newTheme);
-    if (user) {
-      await updateUserSettings({
-        ...user.settings,
-        theme: newTheme
+    if (user && updateUserSettings && user.settings) {
+      await updateUserSettings({ 
+        theme: newTheme === 'system' ? 'light' : newTheme, 
+        emailNotifications: user.settings.emailNotifications || false,
+        pushNotifications: user.settings.pushNotifications || false
       });
     }
   }, [user, updateUserSettings]);

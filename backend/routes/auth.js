@@ -7,6 +7,8 @@ const admin = require('../config/firebase-config');
 const router = express.Router();
 const { register, login } = require('../controllers/authController');
 const auth = require('../middleware/auth');
+const { upload, processUpload } = require('../middleware/upload');
+const path = require('path');
 
 // Helper function to generate JWT token
 const generateToken = (user) => {
@@ -187,5 +189,47 @@ router.patch('/settings', auth, async (req, res) => {
     res.status(500).json({ message: 'Error updating settings', error: error.message });
   }
 });
+
+// Upload profile photo
+router.post('/upload-photo', auth, upload.single('photo'), processUpload, async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    // Get the file path
+    const photoURL = `/uploads/${req.file.filename}`;
+
+    // Update user's photoURL
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { photoURL },
+      { new: true }
+    );
+
+    res.json({
+      message: 'Profile photo updated successfully',
+      photoURL: photoURL,
+      user: {
+        id: user._id,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        settings: user.settings
+      }
+    });
+  } catch (error) {
+    console.error('Photo upload error:', error);
+    res.status(500).json({ message: 'Error uploading photo', error: error.message });
+  }
+});
+
+// Serve uploaded files with caching headers
+router.use('/uploads', (req, res, next) => {
+  // Set cache control headers for images
+  res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+  res.setHeader('Expires', new Date(Date.now() + 31536000000).toUTCString());
+  next();
+}, express.static(path.join(__dirname, '../uploads')));
 
 module.exports = router;

@@ -9,6 +9,7 @@ const helmet = require('helmet');
 const xss = require('xss-clean');
 const rateLimit = require('express-rate-limit');
 const hpp = require('hpp');
+const path = require('path');
 const securityMiddleware = require('./middleware/security');
 const logger = require('./utils/logger');
 
@@ -45,6 +46,10 @@ app.use(cors({
   credentials: true
 }));
 console.log(`🌐 CORS enabled for origin: ${process.env.CLIENT_URL || 'http://localhost:5174'}`.green);
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+console.log('📁 Static file serving enabled for uploads'.green);
 
 // Logging
 if (process.env.NODE_ENV === 'development') {

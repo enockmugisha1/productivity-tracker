@@ -3,15 +3,25 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { useDataStore } from '../store/dataStore';
-import { FiPlus, FiTarget, FiCalendar, FiTrash2 } from 'react-icons/fi';
+import { FiPlus, FiTarget, FiCalendar, FiTrash2, FiMapPin } from 'react-icons/fi';
+
+interface Location {
+  lat: number;
+  lng: number;
+  address?: string;
+  label?: string;
+}
 
 interface Goal {
-  _id: string;
+  id: string;
   title: string;
   description: string;
-  targetDate: string;
+  startDate: Date;
+  endDate: Date;
   progress: number;
-  status: 'active' | 'completed' | 'abandoned';
+  status: 'ongoing' | 'completed';
+  location?: Location;
+  // ...other fields
 }
 
 export default function Goals() {
@@ -106,10 +116,13 @@ export default function Goals() {
   const GoalCard = ({ goal }: { goal: Goal }) => (
     <div className="card dark:bg-gray-800 space-y-4">
       <div className="flex justify-between items-start">
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white">{goal.title}</h3>
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center">
+          {goal.location && <FiMapPin className="text-primary-500 mr-1" title="Has location" />}
+          {goal.title}
+        </h3>
         <select
           value={goal.status}
-          onChange={(e) => updateGoal(goal._id, { status: e.target.value as Goal['status'] })}
+          onChange={(e) => updateGoal(goal.id, { status: e.target.value as Goal['status'] })}
           className="input !w-auto text-sm"
         >
           <option value="active">Active</option>
@@ -120,18 +133,18 @@ export default function Goals() {
       {goal.description && <p className="text-sm text-gray-600 dark:text-gray-300">{goal.description}</p>}
       <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
         <FiCalendar className="mr-2" />
-        Target: {new Date(goal.targetDate).toLocaleDateString()}
+        Target: {new Date(goal.endDate).toLocaleDateString()}
       </div>
       <div>
         <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Progress: {goal.progress}%</label>
         <input
           type="range" min="0" max="100" value={goal.progress}
-          onChange={(e) => updateGoal(goal._id, { progress: Number(e.target.value) })}
+          onChange={(e) => updateGoal(goal.id, { progress: Number(e.target.value) })}
           className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer mt-1"
         />
       </div>
       <div className="flex justify-end">
-          <button onClick={() => deleteGoal(goal._id)} className="p-2 text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors">
+          <button onClick={() => deleteGoal(goal.id)} className="p-2 text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors">
             <FiTrash2 />
           </button>
       </div>
@@ -152,7 +165,7 @@ export default function Goals() {
 
       <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2">
         {goals.length > 0 ? (
-            goals.map((goal) => <GoalCard key={goal._id} goal={goal} />)
+            goals.map((goal) => <GoalCard key={goal.id} goal={goal} />)
         ) : (
             <div className="text-center py-12 col-span-full">
                 <FiTarget className="mx-auto h-12 w-12 text-gray-400" />

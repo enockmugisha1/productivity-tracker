@@ -1,5 +1,12 @@
 import { v4 as uuidv4 } from 'uuid';
 
+export interface Location {
+  lat: number;
+  lng: number;
+  address?: string;
+  label?: string;
+}
+
 export interface Transaction {
   id: string;
   amount: number;
@@ -11,6 +18,7 @@ export interface Transaction {
   receiptUrl?: string;
   isRecurring?: boolean;
   recurringFrequency?: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  location?: Location;
 }
 
 class TransactionService {

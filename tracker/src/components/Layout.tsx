@@ -1,31 +1,20 @@
-import React, { useState, Fragment, useMemo, useCallback } from 'react';
-import { Link, NavLink, useNavigate, Outlet, useLocation } from 'react-router-dom';
+import React, { useState, Fragment, useCallback } from 'react';
+import { NavLink, useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useThemeContext } from '../context/ThemeContext';
 import { Dialog, Transition } from '@headlessui/react';
 import { 
-  FiHome, FiCheckSquare, FiTarget, FiEdit3, FiUser, FiSettings, FiLogOut, FiMenu, FiX, FiMessageSquare,
-  FiSun, FiMoon, FiMonitor, FiDollarSign
+  FiHome, FiCheckSquare, FiTarget, FiEdit3, FiUser, FiSettings, FiLogOut, FiMenu, FiX,
+  FiSun, FiMoon, FiMonitor, FiDollarSign, FiMessageSquare
 } from 'react-icons/fi';
 import OptimizedImage from './OptimizedImage';
 
-interface LayoutProps {
-  // children: React.ReactNode; // Removed children
-}
-
-const navItems = [
-  { name: 'Dashboard', path: '/dashboard', icon: <FiHome /> },
-  { name: 'Goals', path: '/goals', icon: <FiTarget /> },
-  { name: 'Habits', path: '/habits', icon: <FiCheckSquare /> }, // Placeholder, choose better icon if available
-  { name: 'Tasks', path: '/tasks', icon: <FiCheckSquare /> },
-  { name: 'Notes', path: '/notes', icon: <FiEdit3 /> },
-  { name: 'AI Assistant', path: '/ai-assistant', icon: <FiMessageSquare /> }, // New AI Assistant nav item
-];
-
 const SidebarContent = React.memo<{ onLinkClick?: () => void }>(({ onLinkClick }) => {
   const { logout, user } = useAuth();
-  
-  const menuItems = useMemo(() => [
+  const { theme, setTheme } = useThemeContext();
+  const navigate = useNavigate();
+
+  const menuItems = [
     { to: '/dashboard', icon: FiHome, text: 'Dashboard' },
     { to: '/tasks', icon: FiCheckSquare, text: 'Tasks' },
     { to: '/goals', icon: FiTarget, text: 'Goals' },
@@ -33,17 +22,36 @@ const SidebarContent = React.memo<{ onLinkClick?: () => void }>(({ onLinkClick }
     { to: '/notes', icon: FiEdit3, text: 'Notes' },
     { to: '/expenses', icon: FiDollarSign, text: 'Expenses' },
     { to: '/ai-assistant', icon: FiMessageSquare, text: 'AI Assistant' },
-  ], []);
+  ];
 
-  const bottomMenuItems = useMemo(() => [
+  const bottomMenuItems = [
     { to: '/profile', icon: FiUser, text: 'Profile' },
     { to: '/settings', icon: FiSettings, text: 'Settings' },
-  ], []);
+  ];
 
   const handleLogout = useCallback(async () => {
     if (onLinkClick) onLinkClick();
     await logout();
-  }, [onLinkClick, logout]);
+    navigate('/login');
+  }, [onLinkClick, logout, navigate]);
+
+  const toggleTheme = () => {
+    const themes: ('light' | 'dark' | 'system')[] = ['light', 'dark', 'system'];
+    const currentIndex = themes.indexOf(theme);
+    const nextTheme = themes[(currentIndex + 1) % themes.length];
+    setTheme(nextTheme);
+  };
+
+  const getThemeIcon = () => {
+    switch (theme) {
+      case 'light':
+        return <FiSun className="h-5 w-5" />;
+      case 'dark':
+        return <FiMoon className="h-5 w-5" />;
+      default:
+        return <FiMonitor className="h-5 w-5" />;
+    }
+  };
 
   const baseLinkClass = "flex items-center px-4 py-2 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200";
   const activeLinkClass = "bg-primary-500 text-white dark:bg-primary-600";
@@ -61,10 +69,11 @@ const SidebarContent = React.memo<{ onLinkClick?: () => void }>(({ onLinkClick }
             loading="eager"
             decoding="async"
             fetchPriority="high"
+            email={user.email || ''}
           />
         ) : (
           <div className="h-10 w-10 rounded-full bg-primary-500 flex items-center justify-center text-white text-lg font-bold">
-            {user?.displayName?.charAt(0).toUpperCase() || '?'}
+            {user?.displayName?.charAt(0) || '?'}
           </div>
         )}
         <div>
@@ -72,6 +81,7 @@ const SidebarContent = React.memo<{ onLinkClick?: () => void }>(({ onLinkClick }
           <p className="text-xs text-gray-500 dark:text-gray-400">Productivity Tracker</p>
         </div>
       </div>
+
       <nav className="flex-grow p-4 space-y-2">
         {menuItems.map(item => (
           <NavLink
@@ -85,6 +95,7 @@ const SidebarContent = React.memo<{ onLinkClick?: () => void }>(({ onLinkClick }
           </NavLink>
         ))}
       </nav>
+
       <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
         {bottomMenuItems.map(item => (
           <NavLink
@@ -111,29 +122,21 @@ const SidebarContent = React.memo<{ onLinkClick?: () => void }>(({ onLinkClick }
 
 SidebarContent.displayName = 'SidebarContent';
 
-const Layout: React.FC<LayoutProps> = () => {
-  const { user, logout } = useAuth();
+const Layout: React.FC = () => {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { theme, setTheme } = useThemeContext();
-  const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
 
-  const handleLogout = useCallback(async () => {
-    try {
-      await logout();
-      navigate('/login');
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  }, [logout, navigate]);
-
   React.useEffect(() => {
-    setSidebarOpen(false);
+    setIsSidebarOpen(false);
   }, [location]);
 
-  const toggleSidebar = useCallback(() => {
-    setSidebarOpen(prev => !prev);
-  }, []);
+  const toggleTheme = () => {
+    const themes: ('light' | 'dark' | 'system')[] = ['light', 'dark', 'system'];
+    const currentIndex = themes.indexOf(theme);
+    const nextTheme = themes[(currentIndex + 1) % themes.length];
+    setTheme(nextTheme);
+  };
 
   const getThemeIcon = () => {
     switch (theme) {
@@ -146,13 +149,6 @@ const Layout: React.FC<LayoutProps> = () => {
     }
   };
 
-  const toggleTheme = () => {
-    const themes: ('light' | 'dark' | 'system')[] = ['light', 'dark', 'system'];
-    const currentIndex = themes.indexOf(theme);
-    const nextIndex = (currentIndex + 1) % themes.length;
-    setTheme(themes[nextIndex]);
-  };
-
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
       {/* Static sidebar for desktop */}
@@ -163,8 +159,8 @@ const Layout: React.FC<LayoutProps> = () => {
       </div>
 
       {/* Mobile sidebar with transition */}
-      <Transition.Root show={sidebarOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-40 lg:hidden" onClose={setSidebarOpen}>
+      <Transition.Root show={isSidebarOpen} as={Fragment}>
+        <Dialog as="div" className="relative z-40 lg:hidden" onClose={setIsSidebarOpen}>
           <Transition.Child
             as={Fragment}
             enter="transition-opacity ease-linear duration-300"
@@ -201,14 +197,14 @@ const Layout: React.FC<LayoutProps> = () => {
                     <button
                       type="button"
                       className="ml-1 flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
-                      onClick={toggleSidebar}
+                      onClick={() => setIsSidebarOpen(false)}
                     >
                       <span className="sr-only">Close sidebar</span>
                       <FiX className="h-6 w-6 text-white" aria-hidden="true" />
                     </button>
                   </div>
                 </Transition.Child>
-                <SidebarContent onLinkClick={toggleSidebar} />
+                <SidebarContent onLinkClick={() => setIsSidebarOpen(false)} />
               </Dialog.Panel>
             </Transition.Child>
             <div className="flex-shrink-0 w-14" aria-hidden="true">
@@ -224,7 +220,7 @@ const Layout: React.FC<LayoutProps> = () => {
           <button
             type="button"
             className="-ml-0.5 -mt-0.5 h-12 w-12 inline-flex items-center justify-center rounded-md text-gray-500 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
-            onClick={toggleSidebar}
+            onClick={() => setIsSidebarOpen(true)}
           >
             <span className="sr-only">Open sidebar</span>
             <FiMenu className="h-6 w-6" aria-hidden="true" />

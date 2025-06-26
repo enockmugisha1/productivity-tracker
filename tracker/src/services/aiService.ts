@@ -133,7 +133,7 @@ class AIService {
     try {
       const response = await this.retryRequest(
         () => axios.post('/api/ai/ask', { prompt }, {
-          signal: this.abortController.signal
+          signal: this.abortController?.signal
         }),
         maxRetries,
         retryDelay,

@@ -2,11 +2,11 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { CurrencyProvider } from './context/CurrencyContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import { CurrencyProvider } from './context/CurrencyContext';
 
 // Lazy load route components
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -60,7 +60,6 @@ const App: React.FC = () => {
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/ai-assistant" element={<AiAssistant />} />
                 </Route>
-                
                 {/* Catch all route */}
                 <Route path="*" element={<Navigate to="/login" replace />} />
               </Routes>
