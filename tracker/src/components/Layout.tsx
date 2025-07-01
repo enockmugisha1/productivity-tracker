@@ -9,9 +9,12 @@ import {
 } from 'react-icons/fi';
 import OptimizedImage from './OptimizedImage';
 
-const SidebarContent = React.memo<{ onLinkClick?: () => void }>(({ onLinkClick }) => {
+const SidebarContent = React.memo<{
+  onLinkClick?: () => void,
+  toggleTheme: () => void,
+  getThemeIcon: () => JSX.Element
+}>(({ onLinkClick, toggleTheme, getThemeIcon }) => {
   const { logout, user } = useAuth();
-  const { theme, setTheme } = useThemeContext();
   const navigate = useNavigate();
 
   const menuItems = [
@@ -34,24 +37,6 @@ const SidebarContent = React.memo<{ onLinkClick?: () => void }>(({ onLinkClick }
     await logout();
     navigate('/login');
   }, [onLinkClick, logout, navigate]);
-
-  const toggleTheme = () => {
-    const themes: ('light' | 'dark' | 'system')[] = ['light', 'dark', 'system'];
-    const currentIndex = themes.indexOf(theme);
-    const nextTheme = themes[(currentIndex + 1) % themes.length];
-    setTheme(nextTheme);
-  };
-
-  const getThemeIcon = () => {
-    switch (theme) {
-      case 'light':
-        return <FiSun className="h-5 w-5" />;
-      case 'dark':
-        return <FiMoon className="h-5 w-5" />;
-      default:
-        return <FiMonitor className="h-5 w-5" />;
-    }
-  };
 
   const baseLinkClass = "flex items-center px-4 py-2 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200";
   const activeLinkClass = "bg-primary-500 text-white dark:bg-primary-600";
@@ -115,6 +100,13 @@ const SidebarContent = React.memo<{ onLinkClick?: () => void }>(({ onLinkClick }
           <FiLogOut className="h-5 w-5 mr-3" />
           Logout
         </button>
+        <button
+          onClick={toggleTheme}
+          className={`${baseLinkClass} w-full flex items-center justify-start mt-2`}
+        >
+          {getThemeIcon()}
+          <span className="ml-3">Toggle Theme</span>
+        </button>
       </div>
     </div>
   );
@@ -154,7 +146,7 @@ const Layout: React.FC = () => {
       {/* Static sidebar for desktop */}
       <div className="hidden lg:flex lg:flex-shrink-0">
         <div className="flex flex-col w-64 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-          <SidebarContent />
+          <SidebarContent toggleTheme={toggleTheme} getThemeIcon={getThemeIcon} />
         </div>
       </div>
 
@@ -204,7 +196,7 @@ const Layout: React.FC = () => {
                     </button>
                   </div>
                 </Transition.Child>
-                <SidebarContent onLinkClick={() => setIsSidebarOpen(false)} />
+                <SidebarContent toggleTheme={toggleTheme} getThemeIcon={getThemeIcon} onLinkClick={() => setIsSidebarOpen(false)} />
               </Dialog.Panel>
             </Transition.Child>
             <div className="flex-shrink-0 w-14" aria-hidden="true">

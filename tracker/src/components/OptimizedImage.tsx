@@ -27,7 +27,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
 }) => {
   const [imgSrc, setImgSrc] = useState<string>(src);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [, setError] = useState(false);
 
   // Generate Gravatar URL as fallback
   const getGravatarUrl = (email: string) => {
