@@ -41,11 +41,26 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // CORS
+const allowedOrigins = [
+  'http://localhost:5173', // local dev
+  'http://localhost:5174', // local dev (as fallback)
+  'https://productivity-tracker-eight.vercel.app', // production domain
+  'https://productivity-tracker-5pngfvtk4-enock-mugishas-projects.vercel.app', // preview domain
+];
+
 app.use(cors({
-  origin: process.env.CLIENT_URL,
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
-console.log(`🌐 CORS enabled for origin: ${process.env.CLIENT_URL || 'http://localhost:5174'}`.green);
+console.log(`🌐 CORS enabled for origins: ${allowedOrigins.join(', ')}`.green);
 
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
