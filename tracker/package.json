@@ -11,12 +11,14 @@
   },
   "dependencies": {
     "@headlessui/react": "^2.2.4",
+    "@heroicons/react": "^2.2.0",
     "@types/md5": "^2.3.5",
     "@types/uuid": "^10.0.0",
     "axios": "^1.6.2",
     "chart.js": "^4.5.0",
     "date-fns": "^2.30.0",
     "firebase": "^11.8.1",
+    "lodash": "^4.17.21",
     "md5": "^2.3.0",
     "react": "^18.2.0",
     "react-beautiful-dnd": "^13.1.1",
@@ -33,6 +35,7 @@
   },
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.7",
+    "@types/lodash": "^4.17.20",
     "@types/node": "^20.10.0",
     "@types/react": "^18.2.37",
     "@types/react-beautiful-dnd": "^13.1.7",
