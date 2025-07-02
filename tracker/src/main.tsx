@@ -6,7 +6,7 @@ import { Toaster } from 'react-hot-toast';
 import axios from 'axios';
 
 // Set the default base URL for all Axios requests
-axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5007';
+axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'https://productivity-tracker-y6j4.onrender.com';
 
 // Register service worker
 if ('serviceWorker' in navigator) {
