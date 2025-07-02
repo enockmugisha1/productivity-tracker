@@ -45,7 +45,8 @@ const allowedOrigins = [
   'http://localhost:5173', // local dev
   'http://localhost:5174', // local dev (as fallback)
   'https://productivity-tracker-eight.vercel.app', // production domain
-  'https://productivity-tracker-5pngfvtk4-enock-mugishas-projects.vercel.app', // preview domain
+  'https://productivity-tracker-5pngfvtk4-enock-mugishas-projects.vercel.app', 
+  'https://productivity-tracker-an2cw9yoa-enock-mugishas-projects.vercel.app', // preview domain
 ];
 
 app.use(cors({
