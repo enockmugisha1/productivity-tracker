@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { FiPlus, FiTrash2, FiEdit2 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import { useDataStore } from '../store/dataStore';
-import debounce from 'lodash/debounce';
+import debounce from 'lodash.debounce';
 
 interface Note {
   _id: string;
