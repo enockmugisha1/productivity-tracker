@@ -5,20 +5,13 @@ import { useAuth } from '../context/AuthContext';
 import { useDataStore } from '../store/dataStore';
 import { FiPlus, FiTrash2, FiCalendar } from 'react-icons/fi';
 
-interface Location {
-  lat: number;
-  lng: number;
-  address?: string;
-  label?: string;
-}
-
 interface Task {
   _id: string;
   title: string;
-  description: string;
-  status: 'pending' | 'completed';
-  dueDate: string;
-  location?: Location;
+  description?: string;
+  dueDate?: string;
+  completed: boolean;
+  goal?: string;
 }
 
 export default function Tasks() {
@@ -72,11 +65,11 @@ export default function Tasks() {
     }
   };
 
-  const toggleTaskStatus = async (taskId: string, currentStatus: string) => {
+  const toggleTaskStatus = async (taskId: string, currentCompleted: boolean) => {
     if (!user) return;
     try {
       await axios.patch(`/api/tasks/${taskId}`, {
-        status: currentStatus === 'pending' ? 'completed' : 'pending',
+        completed: !currentCompleted,
       });
       fetchTasks();
       fetchStats();
@@ -103,6 +96,8 @@ export default function Tasks() {
   const AddTaskForm = () => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    
     const handleFormSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       const trimmedTitle = newTask.title.trim();
@@ -111,19 +106,30 @@ export default function Tasks() {
         setSuccess('');
         return;
       }
+      
       setError('');
-      await handleSubmit(e);
-      setSuccess('Task added successfully!');
-      setTimeout(() => setSuccess(''), 2000);
+      setIsSubmitting(true);
+      
+      try {
+        await handleSubmit(e);
+        setSuccess('Task added successfully!');
+        setTimeout(() => setSuccess(''), 2000);
+      } catch (error) {
+        setError('Failed to create task. Please try again.');
+      } finally {
+        setIsSubmitting(false);
+      }
     };
+    
     return (
       <form onSubmit={handleFormSubmit} className="card dark:bg-gray-800 space-y-4 mb-6" aria-label="Add New Task">
-      <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Add New Task</h2>
-      <div>
-        <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Add New Task</h2>
+        
+        <div>
+          <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Title <span className="text-red-500">*</span>
-        </label>
-        <input
+          </label>
+          <input
             type="text"
             id="title"
             name="title"
@@ -136,35 +142,41 @@ export default function Tasks() {
             aria-invalid={!!error}
             aria-describedby={error ? 'task-title-error' : undefined}
             placeholder="Enter task title..."
-        />
-      </div>
-      <div>
-        <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Description (Optional)
-        </label>
-        <textarea
+            disabled={isSubmitting}
+          />
+        </div>
+        
+        <div>
+          <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Description (Optional)
+          </label>
+          <textarea
             id="description"
             name="description"
-            rows={5}
+            rows={3}
             className="input focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400"
             value={newTask.description}
             onChange={handleInputChange}
             placeholder="Describe your task..."
-        />
-      </div>
-      <div>
-        <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Due Date (Optional)
-        </label>
-        <input
+            disabled={isSubmitting}
+          />
+        </div>
+        
+        <div>
+          <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Due Date (Optional)
+          </label>
+          <input
             type="date"
             id="dueDate"
             name="dueDate"
             className="input focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400"
             value={newTask.dueDate}
             onChange={handleInputChange}
-        />
-      </div>
+            disabled={isSubmitting}
+          />
+        </div>
+        
         <div aria-live="polite" className="min-h-[24px]">
           {error && (
             <div id="task-title-error" className="text-red-500 text-sm font-medium mt-1 animate-pulse">{error}</div>
@@ -173,33 +185,43 @@ export default function Tasks() {
             <div className="text-green-500 text-sm font-medium mt-1 animate-fade-in">{success}</div>
           )}
         </div>
-      <div className="flex justify-end space-x-3">
-        <button type="button" onClick={() => setIsFormVisible(false)} className="btn btn-secondary">
+        
+        <div className="flex justify-end space-x-3">
+          <button 
+            type="button" 
+            onClick={() => setIsFormVisible(false)} 
+            className="btn btn-secondary"
+            disabled={isSubmitting}
+          >
             Cancel
-        </button>
-          <button type="submit" className="btn btn-primary" disabled={newTask.title.trim().length < 2}>
-          Add Task
-        </button>
-      </div>
-    </form>
-  );
+          </button>
+          <button 
+            type="submit" 
+            className="btn btn-primary" 
+            disabled={newTask.title.trim().length < 2 || isSubmitting}
+          >
+            {isSubmitting ? 'Adding...' : 'Add Task'}
+          </button>
+        </div>
+      </form>
+    );
   };
 
   const TaskItem = ({ task }: { task: Task }) => (
     <li className="card dark:bg-gray-800 flex items-start space-x-4">
       <input
         type="checkbox"
-        checked={task.status === 'completed'}
-        onChange={() => toggleTaskStatus(task._id, task.status)}
+        checked={task.completed}
+        onChange={() => toggleTaskStatus(task._id, task.completed)}
         className="h-6 w-6 text-blue-500 bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 mt-1"
       />
       <div className="flex-grow">
-        <p className={`font-medium ${task.status === 'completed' ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}
+        <p className={`font-medium ${task.completed ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}
         >
           {task.title}
         </p>
         {task.description && (
-            <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{task.description}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{task.description}</p>
         )}
         {task.dueDate && (
           <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mt-2">
@@ -208,7 +230,11 @@ export default function Tasks() {
           </div>
         )}
       </div>
-      <button onClick={() => deleteTask(task._id)} className="p-2 text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors">
+      <button 
+        onClick={() => deleteTask(task._id)} 
+        className="p-2 text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+        title="Delete task"
+      >
         <FiTrash2 />
       </button>
     </li>
@@ -218,7 +244,10 @@ export default function Tasks() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Tasks</h1>
-        <button onClick={() => setIsFormVisible(!isFormVisible)} className="btn btn-primary flex items-center">
+        <button 
+          onClick={() => setIsFormVisible(!isFormVisible)} 
+          className="btn btn-primary flex items-center"
+        >
           <FiPlus className="mr-2" />
           {isFormVisible ? 'Close Form' : 'Add Task'}
         </button>
@@ -228,12 +257,12 @@ export default function Tasks() {
 
       <ul className="space-y-4">
         {tasks.length > 0 ? (
-            tasks.map((task) => <TaskItem key={task._id} task={task} />)
+          tasks.map((task) => <TaskItem key={task._id} task={task} />)
         ) : (
-            <div className="text-center py-12">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white">No tasks yet</h3>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Click "Add Task" to get started.</p>
-            </div>
+          <div className="text-center py-12">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white">No tasks yet</h3>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Click "Add Task" to get started.</p>
+          </div>
         )}
       </ul>
     </div>
