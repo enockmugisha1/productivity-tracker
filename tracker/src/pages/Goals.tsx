@@ -13,20 +13,18 @@ interface Location {
 }
 
 interface Goal {
-  id: string;
+  _id: string;
   title: string;
   description: string;
-  startDate: Date;
-  endDate: Date;
+  dueDate: string;
   progress: number;
-  status: 'ongoing' | 'completed';
+  status: 'not_started' | 'in_progress' | 'completed';
   location?: Location;
-  // ...other fields
 }
 
 export default function Goals() {
   const [goals, setGoals] = useState<Goal[]>([]);
-  const [newGoal, setNewGoal] = useState({ title: '', description: '', targetDate: '' });
+  const [newGoal, setNewGoal] = useState({ title: '', description: '', dueDate: '' });
   const [isFormVisible, setIsFormVisible] = useState(false);
   const { user } = useAuth();
   const fetchStats = useDataStore((state) => state.fetchStats);
@@ -54,8 +52,8 @@ export default function Goals() {
     e.preventDefault();
     if (!user) { toast.error('You must be logged in.'); return; }
     try {
-      await axios.post('/api/goals', { ...newGoal, progress: 0, status: 'active' });
-      setNewGoal({ title: '', description: '', targetDate: '' });
+      await axios.post('/api/goals', { ...newGoal, progress: 0, status: 'not_started' });
+      setNewGoal({ title: '', description: '', dueDate: '' });
       setIsFormVisible(false);
       toast.success('Goal created successfully');
       fetchGoals();
@@ -108,8 +106,8 @@ export default function Goals() {
           <textarea id="description" name="description" rows={5} className="input focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400" value={newGoal.description} onChange={handleInputChange}/>
       </div>
       <div>
-        <label htmlFor="targetDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Target Date</label>
-          <input type="date" id="targetDate" name="targetDate" required className="input focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400" value={newGoal.targetDate} onChange={handleInputChange}/>
+        <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Due Date</label>
+          <input type="date" id="dueDate" name="dueDate" required className="input focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400" value={newGoal.dueDate} onChange={handleInputChange}/>
       </div>
       <div className="flex justify-end space-x-3">
         <button type="button" onClick={() => setIsFormVisible(false)} className="btn btn-secondary">Cancel</button>
@@ -128,29 +126,29 @@ export default function Goals() {
         </h3>
         <select
           value={goal.status}
-          onChange={(e) => updateGoal(goal.id, { status: e.target.value as Goal['status'] })}
+          onChange={(e) => updateGoal(goal._id, { status: e.target.value as Goal['status'] })}
           className="input !w-auto text-sm"
         >
-          <option value="active">Active</option>
+          <option value="not_started">Not Started</option>
+          <option value="in_progress">In Progress</option>
           <option value="completed">Completed</option>
-          <option value="abandoned">Abandoned</option>
         </select>
       </div>
       {goal.description && <p className="text-sm text-gray-600 dark:text-gray-300">{goal.description}</p>}
       <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
         <FiCalendar className="mr-2" />
-        Target: {new Date(goal.endDate).toLocaleDateString()}
+        Due: {new Date(goal.dueDate).toLocaleDateString()}
       </div>
       <div>
         <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Progress: {goal.progress}%</label>
         <input
           type="range" min="0" max="100" value={goal.progress}
-          onChange={(e) => updateGoal(goal.id, { progress: Number(e.target.value) })}
+          onChange={(e) => updateGoal(goal._id, { progress: Number(e.target.value) })}
           className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer mt-1"
         />
       </div>
       <div className="flex justify-end">
-          <button onClick={() => deleteGoal(goal.id)} className="p-2 text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors">
+          <button onClick={() => deleteGoal(goal._id)} className="p-2 text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors">
             <FiTrash2 />
           </button>
       </div>
@@ -171,7 +169,7 @@ export default function Goals() {
 
       <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2">
         {goals.length > 0 ? (
-            goals.map((goal) => <GoalCard key={goal.id} goal={goal} />)
+            goals.map((goal) => <GoalCard key={goal._id} goal={goal} />)
         ) : (
             <div className="text-center py-12 col-span-full">
                 <FiTarget className="mx-auto h-12 w-12 text-gray-400" />

@@ -51,7 +51,7 @@ interface TaskQuick {
   dueDate?: string;
 }
 interface GoalQuick {
-  id: string;
+  _id: string;
   title: string;
   description?: string;
   progress?: number;
@@ -269,7 +269,7 @@ export default function Dashboard() {
               <li className="text-gray-500 dark:text-gray-400">No goals found.</li>
             ) : (
               filteredGoals.map(goal => (
-                <li key={goal.id} className="border-b dark:border-gray-700 pb-2">
+                <li key={goal._id} className="border-b dark:border-gray-700 pb-2">
                   <div className="font-medium text-gray-900 dark:text-white">{goal.title}</div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">Progress: {goal.progress || 0}%</div>
                   <div className="text-sm text-gray-700 dark:text-gray-300 truncate">{goal.description}</div>
