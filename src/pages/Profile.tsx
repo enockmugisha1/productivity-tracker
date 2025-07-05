@@ -1,1 +1,0 @@
-import { FiCamera } from 'react-icons/fi'; 

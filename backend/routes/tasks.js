@@ -5,8 +5,8 @@ const auth = require('../middleware/auth');
 
 // ✅ Create Task
 router.post('/', auth, async (req, res) => {
-  const { title, goal, dueDate } = req.body;
-  const task = await Task.create({ user: req.user, title, goal, dueDate });
+  const { title, description, goal, dueDate } = req.body;
+  const task = await Task.create({ user: req.user, title, description, goal, dueDate });
   res.status(201).json(task);
 });
 
