@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { FiX } from 'react-icons/fi';
 import { useCurrency } from '../context/CurrencyContext';
 
@@ -25,6 +25,12 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onClose, onAdd }) => {
     description: '',
     type: 'expense' as 'income' | 'expense'
   });
+
+  // Add ref and effect for description auto-focus
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (descriptionRef.current) descriptionRef.current.focus();
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,6 +131,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onClose, onAdd }) => {
               placeholder="Add a description..."
               rows={3}
               required
+              autoFocus
             />
           </div>
 

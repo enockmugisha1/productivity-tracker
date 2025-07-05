@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
@@ -81,20 +81,25 @@ export default function Habits() {
       }
   }
 
-  const AddHabitForm = () => (
+  const AddHabitForm = () => {
+    const descriptionRef = useRef<HTMLTextAreaElement>(null);
+    useEffect(() => {
+      if (descriptionRef.current) descriptionRef.current.focus();
+    }, []);
+    return (
     <form onSubmit={handleSubmit} className="card dark:bg-gray-800 space-y-4 mb-6">
       <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Add New Habit</h2>
       <div>
         <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title</label>
-        <input type="text" id="title" name="title" required className="input" value={newHabit.title} onChange={handleInputChange}/>
+          <input type="text" id="title" name="title" required className="input focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400" value={newHabit.title} onChange={handleInputChange} autoFocus/>
       </div>
       <div>
         <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description (Optional)</label>
-        <textarea id="description" name="description" rows={5} className="input" value={newHabit.description} onChange={handleInputChange}/>
+          <textarea id="description" name="description" rows={5} className="input focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400" value={newHabit.description} onChange={handleInputChange}/>
       </div>
       <div>
         <label htmlFor="frequency" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Frequency</label>
-        <select id="frequency" name="frequency" className="input" value={newHabit.frequency} onChange={handleInputChange}>
+          <select id="frequency" name="frequency" className="input focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400" value={newHabit.frequency} onChange={handleInputChange}>
           <option value="daily">Daily</option>
           <option value="weekly">Weekly</option>
         </select>
@@ -105,6 +110,7 @@ export default function Habits() {
       </div>
     </form>
   );
+  };
 
   const HabitCard = ({ habit }: { habit: Habit }) => {
     const today = new Date().toISOString().split('T')[0];
