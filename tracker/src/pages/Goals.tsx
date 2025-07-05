@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
@@ -91,20 +91,25 @@ export default function Goals() {
     }
   };
 
-  const AddGoalForm = () => (
+  const AddGoalForm = () => {
+    const descriptionRef = useRef<HTMLTextAreaElement>(null);
+    useEffect(() => {
+      if (descriptionRef.current) descriptionRef.current.focus();
+    }, []);
+    return (
     <form onSubmit={handleSubmit} className="card dark:bg-gray-800 space-y-4 mb-6">
       <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Add New Goal</h2>
       <div>
         <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title</label>
-        <input type="text" id="title" name="title" required className="input" value={newGoal.title} onChange={handleInputChange}/>
+          <input type="text" id="title" name="title" required className="input focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400" value={newGoal.title} onChange={handleInputChange} autoFocus/>
       </div>
       <div>
         <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description (Optional)</label>
-        <textarea id="description" name="description" rows={5} className="input" value={newGoal.description} onChange={handleInputChange}/>
+          <textarea id="description" name="description" rows={5} className="input focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400" value={newGoal.description} onChange={handleInputChange}/>
       </div>
       <div>
         <label htmlFor="targetDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Target Date</label>
-        <input type="date" id="targetDate" name="targetDate" required className="input" value={newGoal.targetDate} onChange={handleInputChange}/>
+          <input type="date" id="targetDate" name="targetDate" required className="input focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400" value={newGoal.targetDate} onChange={handleInputChange}/>
       </div>
       <div className="flex justify-end space-x-3">
         <button type="button" onClick={() => setIsFormVisible(false)} className="btn btn-secondary">Cancel</button>
@@ -112,6 +117,7 @@ export default function Goals() {
       </div>
     </form>
   );
+  };
 
   const GoalCard = ({ goal }: { goal: Goal }) => (
     <div className="card dark:bg-gray-800 space-y-4">

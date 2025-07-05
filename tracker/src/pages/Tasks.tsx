@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
@@ -100,16 +100,42 @@ export default function Tasks() {
     }
   };
 
-  const AddTaskForm = () => (
-    <form onSubmit={handleSubmit} className="card dark:bg-gray-800 space-y-4 mb-6">
+  const AddTaskForm = () => {
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+    const handleFormSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      const trimmedTitle = newTask.title.trim();
+      if (trimmedTitle.length < 2) {
+        setError('Title must be at least 2 characters.');
+        setSuccess('');
+        return;
+      }
+      setError('');
+      await handleSubmit(e);
+      setSuccess('Task added successfully!');
+      setTimeout(() => setSuccess(''), 2000);
+    };
+    return (
+      <form onSubmit={handleFormSubmit} className="card dark:bg-gray-800 space-y-4 mb-6" aria-label="Add New Task">
       <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Add New Task</h2>
       <div>
         <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Title
+            Title <span className="text-red-500">*</span>
         </label>
         <input
-          type="text" id="title" name="title" required className="input"
-          value={newTask.title} onChange={handleInputChange}
+            type="text"
+            id="title"
+            name="title"
+            required
+            className={`input focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400 ${error ? 'border-red-500' : ''}`}
+            value={newTask.title}
+            onChange={handleInputChange}
+            autoFocus
+            aria-required="true"
+            aria-invalid={!!error}
+            aria-describedby={error ? 'task-title-error' : undefined}
+            placeholder="Enter task title..."
         />
       </div>
       <div>
@@ -117,8 +143,13 @@ export default function Tasks() {
           Description (Optional)
         </label>
         <textarea
-          id="description" name="description" rows={5} className="input"
-          value={newTask.description} onChange={handleInputChange}
+            id="description"
+            name="description"
+            rows={5}
+            className="input focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400"
+            value={newTask.description}
+            onChange={handleInputChange}
+            placeholder="Describe your task..."
         />
       </div>
       <div>
@@ -126,20 +157,33 @@ export default function Tasks() {
           Due Date (Optional)
         </label>
         <input
-          type="date" id="dueDate" name="dueDate" className="input"
-          value={newTask.dueDate} onChange={handleInputChange}
+            type="date"
+            id="dueDate"
+            name="dueDate"
+            className="input focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:focus:ring-primary-400 dark:focus:border-primary-400"
+            value={newTask.dueDate}
+            onChange={handleInputChange}
         />
       </div>
+        <div aria-live="polite" className="min-h-[24px]">
+          {error && (
+            <div id="task-title-error" className="text-red-500 text-sm font-medium mt-1 animate-pulse">{error}</div>
+          )}
+          {success && (
+            <div className="text-green-500 text-sm font-medium mt-1 animate-fade-in">{success}</div>
+          )}
+        </div>
       <div className="flex justify-end space-x-3">
         <button type="button" onClick={() => setIsFormVisible(false)} className="btn btn-secondary">
             Cancel
         </button>
-        <button type="submit" className="btn btn-primary">
+          <button type="submit" className="btn btn-primary" disabled={newTask.title.trim().length < 2}>
           Add Task
         </button>
       </div>
     </form>
   );
+  };
 
   const TaskItem = ({ task }: { task: Task }) => (
     <li className="card dark:bg-gray-800 flex items-start space-x-4">
